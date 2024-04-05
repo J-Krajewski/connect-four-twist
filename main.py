@@ -30,7 +30,6 @@ class TestConnectFourTwist(unittest.TestCase):
         game.player_turn(1, "no direction", 0)
         self.assertFalse(game.get_won())  # Game should not be won yet
 
-       
         game.player_turn(0, "no direction", 0)
         self.assertTrue(game.get_won())  # Game should be won
 

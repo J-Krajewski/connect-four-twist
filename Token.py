@@ -2,20 +2,27 @@
 
 class Token():
 
-    def __init__(self, order, player):
+    def __init__(self, player, position):
         self.__player = player
-        self.__order = order
-        self.__symbol = self.apply_symbol(player)
-        self.__colour = self.apply_colour(player)
+        self.__symbol = self.__player.get_number()
+        self.__colour = self.__player.get_colour()
+        self.__position = position
+        self.__token_name = str(position)
+        self.__order = 0
 
-    def apply_symbol(self, player):   
-        if player == 1:
-            return "X"
-        if player == 2:
-            return "O" 
+    def update(self):
+        self.__token_name = str(self.__position)
 
-    def apply_colour(self, player):
-        if player == 1:
-            return "red"
-        if player == 2:
-            return "yellow"
+    def get_symbol(self):
+        return self.__symbol
+    
+    def get_player(self):
+        return self.__player
+    
+    def get_position(self):
+        return self.__position
+    
+    def get_token_name(self):
+        return self.__token_name
+
+    
