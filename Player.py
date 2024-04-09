@@ -36,7 +36,47 @@ class Player():
         self.__graph.add_edge(lower_token, upper_token, labels="diagonal lru")
 
     def add_diagonal_lrd_connection(self, lower_token, upper_token):
-        self.__graph.add_edge(lower_token, upper_token, labels="diagonal lru")
+        self.__graph.add_edge(lower_token, upper_token, labels="diagonal lrd")
+
+
+
+    def longest_path_with_label(self, label):
+        longest_paths = []
+        max_length = 0
+
+        for node in self.__graph.nodes:
+            target_nodes = set(self.__graph.nodes) - {node}  # Exclude the starting node
+            for target in target_nodes:
+                for path in nx.all_simple_paths(self.__graph, source=node, target=target):
+                    if all(self.__graph.edges[path[i], path[i+1]]['labels'] == label for i in range(len(path)-1)):
+                        path_length = len(path)
+                        if path_length > max_length:
+                            max_length = path_length
+                            longest_paths = [path]
+                        elif path_length == max_length:
+                            longest_paths.append(path)
+
+
+        #print(f"{label}: {longest_paths}")
+        return longest_paths
+
+    
+    def check_win(self):
+        labels = ["horizontal", "vertical", "diagonal lru", "diagonal lrd"]
+        paths_dict = {}
+
+        for label in labels:
+            paths = self.longest_path_with_label(label)
+            paths_dict[label] = paths
+
+        print(paths_dict)
+
+        return paths_dict
+
+        
+
+
+
 
    
         
