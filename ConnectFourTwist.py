@@ -1,4 +1,6 @@
 from colorama import Fore, Style
+import matplotlib.pyplot as plt
+import numpy as np
 # Constants
 TOKENS_TO_WIN = 4
 ROWS = 5
@@ -19,14 +21,19 @@ class ConnectFourTwist:
         self.__player1 = Player("red", 1)
         self.__player2 = Player("yellow", 2)
         self.__players = [self.__player1, self.__player2]
-        self.__winner = None
-        self.__won = False
-        
         self.__current_player = None
         self.__max_turns = 36
 
+        # Win Information
+        self.__winner = None
+        self.__won = False
+        self.__win_direction = None
+        self.__win_tokens = None
+        
+        
+
     def print_board(self):
-        print("=====================")
+        print(f"{Style.RESET_ALL}=====================")
         for row in self.__board:
             #print(row)
             row_output = ""
@@ -39,7 +46,50 @@ class ConnectFourTwist:
                     row_output += str(f"{token.get_player().get_text_colour()}{token.get_symbol()}")
 
             print(row_output)
+        print(f"{Style.RESET_ALL}=====================")
 
+    def display_board(self):
+        colormap = {'white': 0, 'red': 1, 'yellow': 2} 
+        board_colors = np.zeros((len(self.__board), len(self.__board[0])), dtype=int)
+
+        for i in range(len(self.__board)):
+            for j in range(len(self.__board[0])):
+                token = self.__board[i][j]
+                if token != 0:
+                    color = token.get_player().get_colour()
+                    board_colors[i][j] = colormap[color]
+
+        custom_cmap = plt.cm.colors.ListedColormap(['white', 'red', 'yellow'])
+
+
+        fig, axs = plt.subplots(1, 3, figsize=(15, 5), facecolor='white')  # 1 row and 3 columns of subplots
+        axs[0].set_aspect('equal', 'box')
+        axs[0].imshow(board_colors, cmap=custom_cmap, origin='upper')  
+       
+        axs[0].set_yticks(range(len(self.__board)))
+        axs[0].set_yticklabels(range(len(self.__board)-1, -1, -1))
+        
+
+        for i in range(ROWS):
+            for j in range(COLUMNS):
+                token = self.__board[i][j]
+                if token != 0:
+                    axs[0].text(j, i, token.get_position(), ha='center', va='center', color='black')
+
+        # Plot player 1's graph in the second subplot
+        axs[1].set_aspect('equal', 'box')
+        self.__player1.draw_graph(axs[1])  
+        axs[1].set_title('Player 1 Nodes')
+
+        # Plot player 2's graph in the third subplot
+        axs[2].set_aspect('equal', 'box')
+        self.__player2.draw_graph(axs[2])  
+        axs[2].set_title('Player 2 Nodes')
+
+        #plt.ion()
+        plt.show()
+
+        
     def apply_gravity(self):
         for col in range(self.__cols):
             for row in range(self.__rows - 1, 0, -1):
@@ -102,12 +152,12 @@ class ConnectFourTwist:
                             
                     # check and update vertical
                     if y < ROWS - 1:
-                        print(y+1)
+                        #print(y+1)
                         upper_token = self.__board[y+1][(x)]
                         if upper_token != 0: # slot above is not empty
                             
-                            print(f"upper token:{upper_token.get_position()}")
-                            print(f"lower token:{token.get_position()}")
+                            #print(f"upper token:{upper_token.get_position()}")
+                            #print(f"lower token:{token.get_position()}")
                             if upper_token.get_player() == player: # If token above is the same colour
                                 
                                 player.add_vertical_connection(token.get_token_name(), upper_token.get_token_name())
@@ -148,22 +198,28 @@ class ConnectFourTwist:
         # Dropping the token
         self.drop_piece(col=drop_col, player=self.__current_player)
         self.print_board()
-        self.get_current_player().check_win()
+        self.display_board()
+        self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win()
 
         # If the player chooses to rotate the board, rotate the board
         if direction != "no direction":
             self.rotate_board(direction=direction, row_index=rotation_row)
             self.print_board()
-            self.get_current_player().check_win()
+            self.display_board()
+            self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win()
 
-        if show_graph:
-            self.get_current_player().draw_graph()
+        #if show_graph:
+            #self.get_current_player().draw_graph()
         
         self.__turn_number += 1
 
     def print_win_statistics(self):
-        print(f"Winner: {self.__winner}")
-        print(f"Turns: {self.__turn_number}")
+        winner_text_colour = self.__winner.get_text_colour()
+
+        print(f"Winner: {winner_text_colour}Player {self.__winner.get_number()}{Style.RESET_ALL}")
+        print(f"Turns: {winner_text_colour}{self.__turn_number}{Style.RESET_ALL}")
+        print(f"Win Direction: {winner_text_colour}{self.__win_direction}{Style.RESET_ALL}")
+        print(f"Win Tokens: {winner_text_colour}{self.__win_tokens}{Style.RESET_ALL}")
 
     def get_won(self):
         return self.__won
@@ -223,44 +279,29 @@ def test_vertical_paths():
     game.player_turn(drop_col=4, direction="no direction", rotation_row=0, show_graph=True)
     game.player_turn(drop_col=5, direction="no direction", rotation_row=0, show_graph=True)
 
-def test_what():
-    game = ConnectFourTwist()
-
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=True)
-
-    game.player_turn(drop_col=2, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=3, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=2, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=3, direction="no direction", rotation_row=0, show_graph=True)
-
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=2, direction="no direction", rotation_row=0, show_graph=True)
 
 def test_alternating_horizontal():
     game = ConnectFourTwist()
 
-    # Place Alternating Tokens on Row 0
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=2, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=3, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=4, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=5, direction="no direction", rotation_row=0, show_graph=True)
+    col = 0
+    while game.get_won() == False:
+        col = col % COLUMNS
+        
+        game.player_turn(drop_col=col, direction="no direction", rotation_row=0, show_graph=True)
+        col += 1
+    else:
+        print(game.print_win_statistics())
 
-    # Repeat Alternating Tokens on Row 1
+def test_misc():
+    game = ConnectFourTwist()
     game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=True)
     game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=2, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=3, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=4, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=5, direction="no direction", rotation_row=0, show_graph=True)
+    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=True)
+    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=True)
 
 
 #test_vertical_paths()
 #test_vertical_win()
 #test_what()
 test_alternating_horizontal()
-
+#test_misc()

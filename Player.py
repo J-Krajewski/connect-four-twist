@@ -69,27 +69,41 @@ class Player():
             paths = self.longest_path_with_label(label)
             paths_dict[label] = paths
 
-        print(paths_dict)
-
-        return paths_dict
-
-        
-
-
-
-
-   
-        
+        for label, paths in paths_dict.items():
+            for path in paths:
+                if len(path) >= 4:
+                    print("GAME WON")
+                    return True, label, path, self
     
 
-    def draw_graph(self):
+
+        print(paths_dict)
+
+        return False, None, None, None
+
+        
+
+    def draw_graph(self, ax):
         #nx.draw(self.__graph, with_labels=True, node_color = self.__colour)
         #plt.show()
+
+        #pos = nx.spring_layout(self.__graph)  # Layout for better visualization
+        #nx.draw(self.__graph, pos, with_labels=True, node_color=self.__colour)
+        #edge_labels = nx.get_edge_attributes(self.__graph, 'labels')
+        #nx.draw_networkx_edge_labels(self.__graph, pos, edge_labels=edge_labels)
+
+        #plt.show()
+
+        #pos = nx.spring_layout(self.__graph)  # Layout for better visualization
+        #nx.draw(self.__graph, pos, with_labels=True, node_color=self.__colour)
+        #edge_labels = nx.get_edge_attributes(self.__graph, 'labels')
+        #nx.draw_networkx_edge_labels(self.__graph, pos, edge_labels=edge_labels)
+
         pos = nx.spring_layout(self.__graph)  # Layout for better visualization
-        nx.draw(self.__graph, pos, with_labels=True, node_color=self.__colour)
+        nx.draw(self.__graph, pos, with_labels=True, node_color=self.__colour, ax=ax)
         edge_labels = nx.get_edge_attributes(self.__graph, 'labels')
-        nx.draw_networkx_edge_labels(self.__graph, pos, edge_labels=edge_labels)
-        plt.show()
+        nx.draw_networkx_edge_labels(self.__graph, pos, edge_labels=edge_labels, ax=ax)
+        ax.set_title('Graph')  # Add a title to the graph
 
     def get_graph(self):
         return self.__graph
