@@ -49,32 +49,35 @@ class ConnectFourTwist:
         print(f"{Style.RESET_ALL}=====================")
 
     def display_board(self):
-        colormap = {'white': 0, 'red': 1, 'yellow': 2} 
-        board_colors = np.zeros((len(self.__board), len(self.__board[0])), dtype=int)
+        
+        colourmap = {'white': 0, 'red': 1, 'yellow': 2} 
+        custom_cmap = plt.cm.colors.ListedColormap(['white', 'red', 'yellow'])
+        board_colours = np.zeros((len(self.__board), len(self.__board[0])), dtype=int)
 
         for i in range(len(self.__board)):
             for j in range(len(self.__board[0])):
                 token = self.__board[i][j]
                 if token != 0:
-                    color = token.get_player().get_colour()
-                    board_colors[i][j] = colormap[color]
-
-        custom_cmap = plt.cm.colors.ListedColormap(['white', 'red', 'yellow'])
-
+                    colour = token.get_player().get_colour()
+                    board_colours[i][j] = colourmap[colour]
 
         fig, axs = plt.subplots(1, 3, figsize=(15, 5), facecolor='white')  # 1 row and 3 columns of subplots
         axs[0].set_aspect('equal', 'box')
-        axs[0].imshow(board_colors, cmap=custom_cmap, origin='upper')  
-       
+        
+        # Set normalization to None and specify vmin and vmax
+        axs[0].imshow(board_colours, cmap=custom_cmap, origin='upper', norm=None, vmin=0, vmax=2)  
+        
         axs[0].set_yticks(range(len(self.__board)))
         axs[0].set_yticklabels(range(len(self.__board)-1, -1, -1))
         
 
+        ## Drawing Labels 
         for i in range(ROWS):
             for j in range(COLUMNS):
                 token = self.__board[i][j]
                 if token != 0:
-                    axs[0].text(j, i, token.get_position(), ha='center', va='center', color='black')
+                    display_text = f"{token.get_position()} \n P{token.get_player().get_number()}"
+                    axs[0].text(j, i, display_text, ha='center', va='center', color='black')
 
         # Plot player 1's graph in the second subplot
         axs[1].set_aspect('equal', 'box')
@@ -86,7 +89,6 @@ class ConnectFourTwist:
         self.__player2.draw_graph(axs[2])  
         axs[2].set_title('Player 2 Nodes')
 
-        #plt.ion()
         plt.show()
 
         

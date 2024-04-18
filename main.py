@@ -33,7 +33,6 @@ class TestConnectFourTwist(unittest.TestCase):
         game.player_turn(0, "no direction", 0)
         self.assertTrue(game.get_won())  # Game should be won
 
-        print("HERE")
 
 
 if __name__ == '__main__':
