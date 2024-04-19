@@ -22,12 +22,16 @@ from Player import Player
 from Token import Token
 
 class ConnectFourTwist:
-    def __init__(self, rows=ROWS, cols=COLUMNS):
+    def __init__(self, display_board, print_game_stats, rows=ROWS, cols=COLUMNS):
         self.__rows = rows
         self.__cols = cols
         self.__board = [[0] * cols for x in range(rows)]
         
-        self.__turn_number = 1
+        self.__display_board = display_board
+        self.__print_game_stats = print_game_stats
+
+        
+        self.__turn_number = 0
         self.__player1 = Player("red", 1)
         self.__player2 = Player("yellow", 2)
         self.__players = [self.__player1, self.__player2]
@@ -40,9 +44,6 @@ class ConnectFourTwist:
         self.__win_direction = None
         self.__win_tokens = None
         
-        
-        
-
     def print_board(self):
         print(f"{Style.RESET_ALL}=====================")
         for row in self.__board:
@@ -146,10 +147,7 @@ class ConnectFourTwist:
         
         for y in range(0, ROWS):
             for x in range(0, COLUMNS):
-
-
                 token = self.__board[y][x]
-
 
                 if token != 0:
                     player = token.get_player()
@@ -188,104 +186,78 @@ class ConnectFourTwist:
                         if lower_right_token != 0:
                             if lower_right_token.get_player() == player:
                                 player.add_diagonal_lrd_connection(token.get_token_name(), lower_right_token.get_token_name())
-
-    def check_gamestate(self, player):
-        # Check horizontal
-
-        player.depth_first_search()
-        
-        return False  # No win condition met
         
     
-    def player_turn(self, drop_col, direction, rotation_row, show_graph):
+    def player_turn(self, drop_col, direction, rotation_row):
         
         self.__current_player = self.__players[self.__turn_number % len(self.__players)]
 
-        print(f"\n Turn {self.__turn_number} - {self.__current_player.get_text_colour()}Player {self.__current_player.get_number()}'s Turn{Style.RESET_ALL}")
+        if self.__print_game_stats:
+            print(f"\n Turn {self.__turn_number} - {self.__current_player.get_text_colour()}Player {self.__current_player.get_number()}'s Turn{Style.RESET_ALL}")
 
         # Dropping the token
         self.drop_piece(col=drop_col, player=self.__current_player)
         
-        self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win()
+        self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
 
         # If the player chooses to rotate the board, rotate the board
         if direction != "no direction":
             self.rotate_board(direction=direction, row_index=rotation_row)
             self.print_board()
             self.display_board()
-            self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win()
+            self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
 
-        #if show_graph:
-            #self.get_current_player().draw_graph()
+        if self.__display_board:
+            self.display_board()
 
-        self.print_board()
-        self.display_board()
+        if self.__print_game_stats:
+            self.print_board()
+        
         
         self.__turn_number += 1
 
     def print_win_statistics(self):
-        winner_text_colour = self.__winner.get_text_colour()
 
-        print(f"Winner: {winner_text_colour}Player {self.__winner.get_number()}{Style.RESET_ALL}")
-        print(f"Turns: {winner_text_colour}{self.__turn_number}{Style.RESET_ALL}")
-        print(f"Win Direction: {winner_text_colour}{self.__win_direction}{Style.RESET_ALL}")
-        print(f"Win Tokens: {winner_text_colour}{self.__win_tokens}{Style.RESET_ALL}")
+        if self.__print_game_stats:
+            winner_text_colour = self.__winner.get_text_colour()
+
+            print(f"Winner: {winner_text_colour}Player {self.__winner.get_number()}{Style.RESET_ALL}")
+            print(f"Turns: {winner_text_colour}{self.__turn_number}{Style.RESET_ALL}")
+            print(f"Win Direction: {winner_text_colour}{self.__win_direction}{Style.RESET_ALL}")
+            print(f"Win Tokens: {winner_text_colour}{self.__win_tokens}{Style.RESET_ALL}")
 
     def get_won(self):
         return self.__won
     
+    def get_winner(self):
+        return self.__winner
+    
+    def get_win_direction(self):
+        return self.__win_direction
+    
+    def get_win_tokens(self):
+        return self.__win_tokens
+    
     def get_current_player(self):
         return self.__current_player
+    
+    def get_turn_number(self):
+        return self.__turn_number
+    
+    def get_possible_moves(self):
+        possible_moves = []
 
+        # Generate possible moves for dropping a token in each column
+        for col in range(self.__cols):
+            possible_moves.append(('drop', col, 'no direction', 0))  # ('drop', column, direction, rotation_row)
 
-   
-def test_alternating_horizontal():
-    game = ConnectFourTwist()
+        # Generate possible moves for rotating the board in each direction for each row
+        for direction in ["clockwise", "counterclockwise"]:
+            for row_index in range(self.__rows):
+                possible_moves.append(('rotate', None, direction, row_index))  # ('rotate', None, direction, row_index)
 
-    col = 0
-    while game.get_won() == False:
-        col = col % COLUMNS
-        
-        game.player_turn(drop_col=col, direction="no direction", rotation_row=0, show_graph=True)
-        col += 1
-    else:
-        print(game.print_win_statistics())
+        return possible_moves
 
-def test_checkerboard():
-    game = ConnectFourTwist()
-
-    count = 0
-    col = 0
-    while game.get_won() == False:
-        col = col % ROWS
-        count += 1
-        
-        game.player_turn(drop_col=col, direction="no direction", rotation_row=0, show_graph=True)
-
-        if count > ROWS - 1:
-            count = 0
-            col += 1
-        
-    else:
-        print(game.print_win_statistics())
-
-def test_horizontal_lines():
-    game = ConnectFourTwist()
-
-    count = 0
-    col = 0
-    while game.get_won() == False:
-        col = col % ROWS
-        count += 1
-        
-        game.player_turn(drop_col=col, direction="no direction", rotation_row=0, show_graph=True)
-
-        if count > 1:
-            count = 0
-            col += 1
-        
-    else:
-        print(game.print_win_statistics())
 
 def test_misc():
     game = ConnectFourTwist()
@@ -297,5 +269,5 @@ def test_misc():
 
 
 #test_checkerboard()
-test_horizontal_lines()
+#test_horizontal_lines()
 #test_misc()

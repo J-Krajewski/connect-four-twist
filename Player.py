@@ -142,7 +142,7 @@ class Player():
 
             
     
-    def check_win(self):
+    def check_win(self, print_game_stats):
         labels = ["horizontal", "vertical", "diagonal lru", "diagonal lrd"]
         paths_dict = {}
         
@@ -154,7 +154,8 @@ class Player():
         for label, paths in paths_dict.items():
             for path in paths:
                 if len(path) >= 4:
-                    print("GAME WON")
+                    if print_game_stats:
+                        print("GAME WON")
                     # Returning: If the game is won, how the game is won, the nodes that won and the player object
                     
                     return True, label, path, self
@@ -163,7 +164,8 @@ class Player():
         self.calculate_path_scores()
         self.__paths = paths_dict
 
-        self.print_path_info()
+        if print_game_stats:
+            self.print_path_info()
         
 
         return False, None, None, None
