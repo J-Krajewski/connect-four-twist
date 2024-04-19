@@ -1,10 +1,20 @@
 from colorama import Fore, Style
 import matplotlib.pyplot as plt
 import numpy as np
+
+
 # Constants
 TOKENS_TO_WIN = 4
 ROWS = 5
 COLUMNS = 6
+
+## Scoring Values
+WIN_SCORE = 1000 # maybe should be infinity
+LOSS_SCORE = -1000 # maybe should be negative infinity
+THREE_CONNECTED_NODES = 15
+TWO_CONNNECTED_NODES = 10
+## BLOCK_THREE_CONNECTED_NODES = 15
+## BLOCK_TWO_CONNECTED_NODES = 10
 
 # This class represents the game state 
 
@@ -17,7 +27,7 @@ class ConnectFourTwist:
         self.__cols = cols
         self.__board = [[0] * cols for x in range(rows)]
         
-        self.__turn_number = 0
+        self.__turn_number = 1
         self.__player1 = Player("red", 1)
         self.__player2 = Player("yellow", 2)
         self.__players = [self.__player1, self.__player2]
@@ -29,6 +39,7 @@ class ConnectFourTwist:
         self.__won = False
         self.__win_direction = None
         self.__win_tokens = None
+        
         
         
 
@@ -178,15 +189,10 @@ class ConnectFourTwist:
                             if lower_right_token.get_player() == player:
                                 player.add_diagonal_lrd_connection(token.get_token_name(), lower_right_token.get_token_name())
 
-
-
-    
     def check_gamestate(self, player):
         # Check horizontal
 
         player.depth_first_search()
-        
-
         
         return False  # No win condition met
         
@@ -199,8 +205,7 @@ class ConnectFourTwist:
 
         # Dropping the token
         self.drop_piece(col=drop_col, player=self.__current_player)
-        self.print_board()
-        self.display_board()
+        
         self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win()
 
         # If the player chooses to rotate the board, rotate the board
@@ -212,6 +217,9 @@ class ConnectFourTwist:
 
         #if show_graph:
             #self.get_current_player().draw_graph()
+
+        self.print_board()
+        self.display_board()
         
         self.__turn_number += 1
 
@@ -231,57 +239,6 @@ class ConnectFourTwist:
 
 
    
-def test_vertical_win_condition():
-    game = ConnectFourTwist()
-
-    #while game.get_won() == False:
-    for i in range(0, 4):
-        # First player will place in column 0
-        game.player_turn(0, "no direction", 0)
-        if game.check_gamestate(game.get_current_player()):
-            game.print_win_statistics()
-            exit()
-        
-        # Second player will place in column 1
-        game.player_turn(1, "no direction", 0) 
-        if game.check_gamestate(game.get_current_player()):
-            game.print_win_statistics()
-            exit()
-
-def test_vertical_win():
-    game = ConnectFourTwist()
-    
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=True)
-   
-def test_vertical_paths():
-    game = ConnectFourTwist()
-
-
-    # stacks 3 high in postions 0 and 1
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=False)
-
-    
-
-    # stacks 3 high in postions 4 and 
-    game.player_turn(drop_col=4, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=5, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=4, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=5, direction="no direction", rotation_row=0, show_graph=False)
-    game.player_turn(drop_col=4, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=5, direction="no direction", rotation_row=0, show_graph=True)
-
-
 def test_alternating_horizontal():
     game = ConnectFourTwist()
 
@@ -294,6 +251,42 @@ def test_alternating_horizontal():
     else:
         print(game.print_win_statistics())
 
+def test_checkerboard():
+    game = ConnectFourTwist()
+
+    count = 0
+    col = 0
+    while game.get_won() == False:
+        col = col % ROWS
+        count += 1
+        
+        game.player_turn(drop_col=col, direction="no direction", rotation_row=0, show_graph=True)
+
+        if count > ROWS - 1:
+            count = 0
+            col += 1
+        
+    else:
+        print(game.print_win_statistics())
+
+def test_horizontal_lines():
+    game = ConnectFourTwist()
+
+    count = 0
+    col = 0
+    while game.get_won() == False:
+        col = col % ROWS
+        count += 1
+        
+        game.player_turn(drop_col=col, direction="no direction", rotation_row=0, show_graph=True)
+
+        if count > 1:
+            count = 0
+            col += 1
+        
+    else:
+        print(game.print_win_statistics())
+
 def test_misc():
     game = ConnectFourTwist()
     game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=True)
@@ -302,8 +295,7 @@ def test_misc():
     game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=True)
 
 
-#test_vertical_paths()
-#test_vertical_win()
-#test_what()
-test_alternating_horizontal()
+
+#test_checkerboard()
+test_horizontal_lines()
 #test_misc()
