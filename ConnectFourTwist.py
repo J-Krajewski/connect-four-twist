@@ -1,6 +1,10 @@
 from colorama import Fore, Style
 import matplotlib.pyplot as plt
 import numpy as np
+import copy
+
+from Player import Player 
+from Token import Token
 
 
 # Constants
@@ -13,13 +17,16 @@ WIN_SCORE = 1000 # maybe should be infinity
 LOSS_SCORE = -1000 # maybe should be negative infinity
 THREE_CONNECTED_NODES = 15
 TWO_CONNNECTED_NODES = 10
+
+
+PLAYER_1 = Player("red", 1)
+PLAYER_2 = Player("yellow", 2)
 ## BLOCK_THREE_CONNECTED_NODES = 15
 ## BLOCK_TWO_CONNECTED_NODES = 10
 
 # This class represents the game state 
 
-from Player import Player 
-from Token import Token
+
 
 class ConnectFourTwist:
     def __init__(self, display_board, print_game_stats, rows=ROWS, cols=COLUMNS):
@@ -30,19 +37,19 @@ class ConnectFourTwist:
         self.__display_board = display_board
         self.__print_game_stats = print_game_stats
 
-        
         self.__turn_number = 0
-        self.__player1 = Player("red", 1)
-        self.__player2 = Player("yellow", 2)
+        self.__player1 = PLAYER_1
+        self.__player2 = PLAYER_2
         self.__players = [self.__player1, self.__player2]
         self.__current_player = None
-        self.__max_turns = 36
 
         # Win Information
         self.__winner = None
         self.__won = False
         self.__win_direction = None
         self.__win_tokens = None
+
+        self.__possible_moves = None
         
     def print_board(self):
         print(f"{Style.RESET_ALL}=====================")
@@ -207,11 +214,13 @@ class ConnectFourTwist:
             self.display_board()
             self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
 
+        if self.__print_game_stats:
+            self.print_board()
+
         if self.__display_board:
             self.display_board()
 
-        if self.__print_game_stats:
-            self.print_board()
+        
         
         
         self.__turn_number += 1
@@ -244,30 +253,83 @@ class ConnectFourTwist:
     def get_turn_number(self):
         return self.__turn_number
     
-    def get_possible_moves(self):
-        possible_moves = []
+    def calc_possible_drops(self):
+        possible_drop = []
+        
 
         # Generate possible moves for dropping a token in each column
         for col in range(self.__cols):
-            possible_moves.append(('drop', col, 'no direction', 0))  # ('drop', column, direction, rotation_row)
+            if self.__board[0][col] == 0:
+                print(f"column {col} has at least one space")
+                possible_drop.append((col))  # ('drop', column, direction, rotation_row)
 
-        # Generate possible moves for rotating the board in each direction for each row
-        for direction in ["clockwise", "counterclockwise"]:
-            for row_index in range(self.__rows):
-                possible_moves.append(('rotate', None, direction, row_index))  # ('rotate', None, direction, row_index)
+        ##print(f"Possible Combinations of Moves: {len(rows_with_tokens) * len(possible_drop) * len(directions)} ")
+        
+        return possible_drop
+    
+    def calc_possible_rotations(self):
+        highest_token_row = ROWS
+        rows_with_tokens = []
+        
+        for row in range(self.__rows):
+            # If the board is not empty 
+            if self.__board[row] != [0 for _ in range(self.__cols)]:
+                highest_token_row = row
+                
+        ## Remember this is reversed 
+        print(f"Row of Highest Token on Board: {highest_token_row}")
 
-        return possible_moves
+        rows_with_tokens = [row for row in range(highest_token_row - 1, ROWS)]
+        
+        return rows_with_tokens
+
+    def calc_possible_moves(self):
+        possible_moves = []
+        directions = ["clockwise", "counterclockwise", "no direction"]
+
+        # Generate possible moves for dropping a token in each column
+        possible_drops = self.calc_possible_drops()
+        possible_row_rotations = self.calc_possible_rotations()
+        
+
+        # Generate all possible combinations of drop and rotation
+        for drop_col in possible_drops:
+            for rotation_row in possible_row_rotations:
+                for direction in directions:
+                    possible_moves.append((drop_col, direction, rotation_row))
 
 
-def test_misc():
-    game = ConnectFourTwist()
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=0, direction="no direction", rotation_row=0, show_graph=True)
-    game.player_turn(drop_col=1, direction="no direction", rotation_row=0, show_graph=True)
+        #self.__possible_moves = possible_moves
+
+        return possible_moves    
+
+    def get_total_score(self):
+        return self.__current_player.get_score_total()
 
 
 
-#test_checkerboard()
-#test_horizontal_lines()
-#test_misc()
+def run_game():
+    game = ConnectFourTwist(display_board=True, print_game_stats=False)
+    possible_moves = game.calc_possible_moves()
+    scored_moves = []
+
+    for possible_move in possible_moves:
+        # Create a copy of the game state for each possible move
+        test_gamestate = copy.deepcopy(game)
+
+        # Simulate the move on the copied game state
+        drop_col, direction, rotation_row = possible_move
+        test_gamestate.player_turn(drop_col=drop_col, direction=direction, rotation_row=rotation_row)
+
+        # Calculate the score for the move and append it to the list of scored moves
+        move_score = test_gamestate.calc_possible_moves()  # Assuming you have a method to calculate the score
+        scored_moves.append((possible_move, move_score))
+
+    # Now scored_moves contains tuples of possible moves and their scores
+    for move, score in scored_moves:
+        print(f"Move: {move}, Score: {score}")
+
+
+
+run_game()
+

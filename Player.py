@@ -58,8 +58,6 @@ class Player():
 
         print(f"Total Path Score: {self.__score_total}")
 
-
-
     def all_paths_with_label(self, label):
         all_paths = []
 
@@ -110,7 +108,6 @@ class Player():
         self.__paths_scored = {}
         self.__score_total = 0
 
-
         # Calculate scores for each path label
         for label in ["horizontal", "vertical", "diagonal lru", "diagonal lrd"]:
             #paths = self.longest_path_with_label(label)
@@ -138,10 +135,6 @@ class Player():
             self.__score_total += score
 
 
-
-
-            
-    
     def check_win(self, print_game_stats):
         labels = ["horizontal", "vertical", "diagonal lru", "diagonal lrd"]
         paths_dict = {}
@@ -170,8 +163,6 @@ class Player():
 
         return False, None, None, None
 
-        
-
     def draw_graph(self, ax):
         
         pos = nx.spring_layout(self.__graph)  # Layout for better visualization
@@ -191,20 +182,10 @@ class Player():
     
     def get_text_colour(self):
         return self.__text_colour
-
-
-def test_graphs():
-    player1 = Player("red", 1)
-    player2 = Player("yellow", 2)
-
-    player1.init_graph()
-    player2.init_graph()
-    player1.add_horizontal_connection(left_token="A", right_token="B")
-    player1.add_horizontal_connection(left_token="B", right_token="C")
-
-    player2.add_horizontal_connection(left_token="A", right_token="B")
-    player2.add_horizontal_connection(left_token="B", right_token="C")
-
-    player1.draw_graph()
-    player2.draw_graph()
+    
+    def get_path_scored(self):
+        return self.__paths_scored
+    
+    def get_score_total(self):
+        return self.__score_total
 
