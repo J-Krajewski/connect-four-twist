@@ -307,13 +307,49 @@ class ConnectFourTwist:
 
     def get_total_score(self):
         return self.__current_player.get_score_total()
+    
+    def run_minimax(self, depth):
+        best_move, best_score = self.minimax(depth, True)
+        return best_move, best_score
 
+    def minimax(self, depth, maximizing_player):
+        if depth == 0 or self.get_won():
+            return None, self.get_total_score()
 
+        if maximizing_player:
+            max_score = float('-inf')
+            possible_moves = self.calc_possible_moves()
+            best_move = None
+
+            for move in possible_moves:
+                child_node = copy.deepcopy(self)
+                child_node.player_turn(*move)
+                _, score = child_node.minimax(depth - 1, False)
+                if score > max_score:
+                    max_score = score
+                    best_move = move
+            return best_move, max_score
+
+        else:
+            min_score = float('inf')
+            possible_moves = self.calc_possible_moves()
+            best_move = None
+
+            for move in possible_moves:
+                child_node = copy.deepcopy(self)
+                child_node.player_turn(*move)
+                _, score = child_node.minimax(depth - 1, True)
+                if score < min_score:
+                    min_score = score
+                    best_move = move
+            return best_move, min_score
+    
 
 def run_game():
     game = ConnectFourTwist(display_board=False, print_game_stats=False)
     possible_moves = game.calc_possible_moves()
     scored_moves = []
+
 
     for possible_move in possible_moves:
         # Create a copy of the game state for each possible move
@@ -323,15 +359,20 @@ def run_game():
         drop_col, direction, rotation_row = possible_move
         test_gamestate.player_turn(drop_col=drop_col, direction=direction, rotation_row=rotation_row)
 
-        # Calculate the score for the move and append it to the list of scored moves
-        move_score = test_gamestate.get_total_score()  # Assuming you have a method to calculate the score
+        # Calc score and add it to the list of scores
+        move_score = test_gamestate.get_total_score()  
         scored_moves.append((possible_move, move_score))
 
     # Now scored_moves contains tuples of possible moves and their scores
     for move, score in scored_moves:
         print(f"Move: {move}, Score: {score}")
 
+def run_minimax():
+    game = ConnectFourTwist(display_board=False, print_game_stats=False)
+    best_move, best_score = game.run_minimax(depth=3)  # Adjust depth as needed
+    print(f"Best Move: {best_move}, Best Score: {best_score}")
 
+run_minimax()
 
-run_game()
-
+#run_game()
+#run_minimax()
