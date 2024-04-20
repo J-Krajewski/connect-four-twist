@@ -210,8 +210,13 @@ class ConnectFourTwist:
         # If the player chooses to rotate the board, rotate the board
         if direction != "no direction":
             self.rotate_board(direction=direction, row_index=rotation_row)
-            self.print_board()
-            self.display_board()
+
+            if self.__print_game_stats:
+                self.print_board()
+
+            if self.__display_board:
+                self.display_board()
+            
             self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
 
         if self.__print_game_stats:
@@ -220,9 +225,6 @@ class ConnectFourTwist:
         if self.__display_board:
             self.display_board()
 
-        
-        
-        
         self.__turn_number += 1
 
     def print_win_statistics(self):
@@ -260,7 +262,7 @@ class ConnectFourTwist:
         # Generate possible moves for dropping a token in each column
         for col in range(self.__cols):
             if self.__board[0][col] == 0:
-                print(f"column {col} has at least one space")
+                #print(f"column {col} has at least one space")
                 possible_drop.append((col))  # ('drop', column, direction, rotation_row)
 
         ##print(f"Possible Combinations of Moves: {len(rows_with_tokens) * len(possible_drop) * len(directions)} ")
@@ -277,7 +279,7 @@ class ConnectFourTwist:
                 highest_token_row = row
                 
         ## Remember this is reversed 
-        print(f"Row of Highest Token on Board: {highest_token_row}")
+        #print(f"Row of Highest Token on Board: {highest_token_row}")
 
         rows_with_tokens = [row for row in range(highest_token_row - 1, ROWS)]
         
@@ -309,7 +311,7 @@ class ConnectFourTwist:
 
 
 def run_game():
-    game = ConnectFourTwist(display_board=True, print_game_stats=False)
+    game = ConnectFourTwist(display_board=False, print_game_stats=False)
     possible_moves = game.calc_possible_moves()
     scored_moves = []
 
@@ -322,7 +324,7 @@ def run_game():
         test_gamestate.player_turn(drop_col=drop_col, direction=direction, rotation_row=rotation_row)
 
         # Calculate the score for the move and append it to the list of scored moves
-        move_score = test_gamestate.calc_possible_moves()  # Assuming you have a method to calculate the score
+        move_score = test_gamestate.get_total_score()  # Assuming you have a method to calculate the score
         scored_moves.append((possible_move, move_score))
 
     # Now scored_moves contains tuples of possible moves and their scores
