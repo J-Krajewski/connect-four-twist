@@ -121,12 +121,18 @@ class ConnectFourTwist:
                             break
 
     def rotate_board(self, direction, row_index):
-        if direction == "clockwise":
+
+        ## CHANGE THIS 
+
+        ## if right
+            # move all elements over right one on board but ALSO UPDATE GRAPH DATA FOR THE NODE
+
+        if direction == "right":
             self.__board[row_index] = self.__board[row_index][-1:] + self.__board[row_index][:-1]
             self.apply_gravity()
             self.update_graphs()
             return True  # Rotation applied
-        elif direction == "counterclockwise":
+        elif direction == "left":
             self.__board[row_index] = self.__board[row_index][1:] + self.__board[row_index][:1]
             self.apply_gravity()
             self.update_graphs()
@@ -145,10 +151,20 @@ class ConnectFourTwist:
                 token = Token(player, [col, ROWS - row - 1])
                 self.__board[row][col] = token
                 player.add_token(str(token.get_position()))
-                self.update_graphs()
+                
                 return True # piece is allowed to be dropped here
         return False # Col is full, cant drop piece 
-    
+
+    def check_node_data(self):
+
+        for y in range(0, ROWS):
+            for x in range(0, COLUMNS):
+                token = self.__board[y][x]
+
+                if token != 0:
+
+                    print(f"T Name {token.get_token_name()} T Pos {token.get_position}")
+                    
     
     def update_graphs(self):
         
@@ -157,7 +173,18 @@ class ConnectFourTwist:
                 token = self.__board[y][x]
 
                 if token != 0:
+
                     player = token.get_player()
+
+                    ## Need to find what position and value the token was previously rendered as
+
+                    #graph_nodes_edges = player.get_all_elements()
+                    #print(f"Graph Node and Edge: {graph_nodes_edges}")
+
+                
+                    
+
+
                     
                     # check  and update horizontal
                     right_token = self.__board[y][(x+1)%(COLUMNS)]
@@ -193,7 +220,8 @@ class ConnectFourTwist:
                         if lower_right_token != 0:
                             if lower_right_token.get_player() == player:
                                 player.add_diagonal_lrd_connection(token.get_token_name(), lower_right_token.get_token_name())
-        
+
+
     
     def player_turn(self, drop_col, direction, rotation_row):
         
@@ -204,12 +232,20 @@ class ConnectFourTwist:
 
         # Dropping the token
         self.drop_piece(col=drop_col, player=self.__current_player)
+        self.update_graphs()
+
+        if self.__print_game_stats:
+            self.print_board()
+
+        if self.__display_board:
+            self.display_board()
         
         self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
 
         # If the player chooses to rotate the board, rotate the board
         if direction != "no direction":
             self.rotate_board(direction=direction, row_index=rotation_row)
+            self.update_graphs()
 
             if self.__print_game_stats:
                 self.print_board()
@@ -219,11 +255,7 @@ class ConnectFourTwist:
             
             self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
 
-        if self.__print_game_stats:
-            self.print_board()
-
-        if self.__display_board:
-            self.display_board()
+        self.update_graphs()
 
         self.__turn_number += 1
 
@@ -287,7 +319,8 @@ class ConnectFourTwist:
 
     def calc_possible_moves(self):
         possible_moves = []
-        directions = ["clockwise", "counterclockwise", "no direction"]
+        directions = ["left", "right", "no direction"]
+        #directions = ["no direction"]
 
         # Generate possible moves for dropping a token in each column
         possible_drops = self.calc_possible_drops()
@@ -316,6 +349,7 @@ class ConnectFourTwist:
         if depth == 0 or self.get_won():
             return None, self.get_total_score()
 
+
         if maximizing_player:
             max_score = float('-inf')
             possible_moves = self.calc_possible_moves()
@@ -343,6 +377,10 @@ class ConnectFourTwist:
                     min_score = score
                     best_move = move
             return best_move, min_score
+        
+    def set_display(self, display_board, print_board):
+        self.__display_board = display_board
+        self.__print_game_stats = print_board
     
 
 def run_game():
@@ -369,10 +407,45 @@ def run_game():
 
 def run_minimax():
     game = ConnectFourTwist(display_board=False, print_game_stats=False)
-    best_move, best_score = game.run_minimax(depth=3)  # Adjust depth as needed
+
+
+    #best_move, best_score = game.run_minimax(depth=3)  # Adjust depth as needed
+    #print(f"Best Move: {best_move}, Best Score: {best_score}")
+
+    for x in range(0, 10):
+        best_move, best_score = game.run_minimax(depth=3)  # Adjust depth as needed
+        print(f"Best Move: {best_move}, Best Score: {best_score}")
+        col = best_move[0]
+        direction = best_move[1]
+        rotation = best_move[2]
+
+        game.set_display(False, True)
+        game.player_turn(col, direction, rotation)
+        game.set_display(False, False)
+
+
     print(f"Best Move: {best_move}, Best Score: {best_score}")
+
+
+
+def rotation_win():   
+    game = ConnectFourTwist(display_board=True, print_game_stats=True)
+    game.player_turn(0, "no direction", 3)
+    game.player_turn(1, "no direction", 3)
+    game.player_turn(0, "no direction", 3)
+    game.player_turn(1, "no direction", 3)
+    game.player_turn(0, "no direction", 3)
+    game.player_turn(1, "no direction", 3)
+    
+    
+    
+    
+
 
 run_minimax()
 
 #run_game()
 #run_minimax()
+
+
+#rotation_win()

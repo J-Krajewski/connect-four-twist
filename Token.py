@@ -24,5 +24,11 @@ class Token():
     
     def get_token_name(self):
         return self.__token_name
+    
+    def set_token_name(self, token_name):
+        self.__token_name = token_name
+
+    def set_position(self, position):
+        self.__position = position
 
     

@@ -188,4 +188,30 @@ class Player():
     
     def get_score_total(self):
         return self.__score_total
+    
+
+    def reset_graph(self):
+        self.__graph = nx.DiGraph()
+
+
+    def remove_token(self, token):
+         if token in self.__graph.nodes:
+            # Iterate over the edges in the graph
+            for edge in list(self.__graph.edges):
+                # Check if the edge is associated with the token
+                if token in edge:
+                    # Remove the edge from the graph
+                    self.__graph.remove_edge(*edge)
+
+            # Remove the token from the graph
+            self.__graph.remove_node(token)
+
+    def get_all_elements(self):
+        # Get all nodes (tokens) in the graph
+        nodes = list(self.__graph.nodes)
+        
+        # Get all edges (connections) in the graph
+        edges = list(self.__graph.edges)
+        
+        return nodes, edges
 
