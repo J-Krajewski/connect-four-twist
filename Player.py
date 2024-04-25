@@ -47,7 +47,6 @@ class Player():
 
     def print_path_info(self):
         
-
         print(f"Player {self.__number} Paths: ")
         for label in LABELS:
             print(f"{label}: {self.__paths[label]}")
@@ -58,6 +57,12 @@ class Player():
 
         print(f"Total Path Score: {self.__score_total}")
 
+
+    def clear(self):
+        self.nodes.clear()
+        self.edges.clear()
+
+    
     def all_paths_with_label(self, label):
         all_paths = []
 

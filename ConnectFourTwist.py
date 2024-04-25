@@ -129,6 +129,7 @@ class ConnectFourTwist:
 
         if direction == "right":
             self.__board[row_index] = self.__board[row_index][-1:] + self.__board[row_index][:-1]
+
             self.apply_gravity()
             self.update_graphs()
             return True  # Rotation applied
@@ -144,6 +145,10 @@ class ConnectFourTwist:
         else:
             print(f"{direction} is not a direction option, rotation not applied")
             return False # rotation not applied 
+        
+        # Update All pieces 
+
+        
 
     def drop_piece(self, col, player):
         for row in range(self.__rows -1, -1, -1):
@@ -163,16 +168,40 @@ class ConnectFourTwist:
 
                 if token != 0:
 
-                    print(f"T Name {token.get_token_name()} T Pos {token.get_position}")
+                    print(f"T Name {token.get_token_name()} T Pos {token.get_position()}")
+                    print(f"{x}, {ROWS - y -1}")
+
+                    name_board_cond = (token.get_token_name() == str(f"[{x}, {ROWS - y -1}]"))
+                    pos_board_cond = (str(token.get_position()) == str(f"[{x}, {ROWS - y -1}]"))
+
+                    # If the token has been shifted, update the name of the token 
+                    if not name_board_cond or not pos_board_cond:
+                        print("DISCREPANCY !!!")
+
+                        #token.get_player().update_token_in_graph([x, ROWS - y -1])
+                        
+
+                        token.set_position([x, ROWS - y -1])
+                        token.set_token_name(str(f"[{x}, {ROWS - y -1}]"))
+
+                        
+
+                    
                     
     
     def update_graphs(self):
-        
+
+        self.check_node_data()
+
+        self.__player1.get_graph().clear()
+        self.__player2.get_graph().clear()
+
         for y in range(0, ROWS):
             for x in range(0, COLUMNS):
                 token = self.__board[y][x]
 
                 if token != 0:
+                    token.get_player().add_token(token.get_token_name())
 
                     player = token.get_player()
 
@@ -181,11 +210,6 @@ class ConnectFourTwist:
                     #graph_nodes_edges = player.get_all_elements()
                     #print(f"Graph Node and Edge: {graph_nodes_edges}")
 
-                
-                    
-
-
-                    
                     # check  and update horizontal
                     right_token = self.__board[y][(x+1)%(COLUMNS)]
                     if right_token != 0: # slot to the right is not empty
@@ -221,6 +245,10 @@ class ConnectFourTwist:
                             if lower_right_token.get_player() == player:
                                 player.add_diagonal_lrd_connection(token.get_token_name(), lower_right_token.get_token_name())
 
+                    # If the token has no relations, just add it to its respective tree !
+                    
+                    
+
 
     
     def player_turn(self, drop_col, direction, rotation_row):
@@ -245,7 +273,6 @@ class ConnectFourTwist:
         # If the player chooses to rotate the board, rotate the board
         if direction != "no direction":
             self.rotate_board(direction=direction, row_index=rotation_row)
-            self.update_graphs()
 
             if self.__print_game_stats:
                 self.print_board()
@@ -349,7 +376,6 @@ class ConnectFourTwist:
         if depth == 0 or self.get_won():
             return None, self.get_total_score()
 
-
         if maximizing_player:
             max_score = float('-inf')
             possible_moves = self.calc_possible_moves()
@@ -433,19 +459,55 @@ def rotation_win():
     game.player_turn(0, "no direction", 3)
     game.player_turn(1, "no direction", 3)
     game.player_turn(0, "no direction", 3)
-    game.player_turn(1, "no direction", 3)
+    game.player_turn(1, "right", 3)
     game.player_turn(0, "no direction", 3)
     game.player_turn(1, "no direction", 3)
     
-    
-    
+def test_horizontal_lines():
+    game = ConnectFourTwist(display_board=True, print_game_stats=True)
+    count = 0
+    col = 0
+    while game.get_won() == False:
+        col = col % ROWS
+        count += 1
+        
+        game.player_turn(drop_col=col, direction="no direction", rotation_row=0)
+
+        if count > 1:
+            count = 0
+            col += 1
+        
+    else:
+        
+        print(game.print_win_statistics())
+
+def test_checkerboard():
+    game = ConnectFourTwist(display_board=True, print_game_stats=True)
+    count = 0
+    col = 0
+    while game.get_won() == False:
+        col = col % ROWS
+        count += 1
+        
+        game.player_turn(drop_col=col, direction="no direction", rotation_row=0)
+
+        if count > ROWS - 1:
+            count = 0
+            col += 1
+        
+    else:
+        print(game.print_win_statistics())
+
     
 
 
-run_minimax()
+#run_minimax()
 
 #run_game()
 #run_minimax()
 
 
-#rotation_win()
+rotation_win()
+
+#test_horizontal_lines()
+#test_checkerboard()
