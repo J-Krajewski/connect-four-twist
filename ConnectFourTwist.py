@@ -2,6 +2,8 @@ from colorama import Fore, Style
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
+import math
+
 
 from Player import Player 
 from Token import Token
@@ -121,35 +123,23 @@ class ConnectFourTwist:
                             break
 
     def rotate_board(self, direction, row_index):
-
-        ## CHANGE THIS 
-
-        ## if right
-            # move all elements over right one on board but ALSO UPDATE GRAPH DATA FOR THE NODE
-
         if direction == "right":
             self.__board[row_index] = self.__board[row_index][-1:] + self.__board[row_index][:-1]
 
             self.apply_gravity()
             self.update_graphs()
-            return True  # Rotation applied
+            return True  
         elif direction == "left":
             self.__board[row_index] = self.__board[row_index][1:] + self.__board[row_index][:1]
             self.apply_gravity()
             self.update_graphs()
-            return True  # Rotation applied
+            return True  
         elif direction == "no direction":
-            #self.apply_gravity()
-            return True # Player chose not to rotate
-            
+            return True 
         else:
             print(f"{direction} is not a direction option, rotation not applied")
-            return False # rotation not applied 
+            return False  
         
-        # Update All pieces 
-
-        
-
     def drop_piece(self, col, player):
         for row in range(self.__rows -1, -1, -1):
             if self.__board[row][col] == 0:
@@ -160,35 +150,28 @@ class ConnectFourTwist:
                 return True # piece is allowed to be dropped here
         return False # Col is full, cant drop piece 
 
-    def check_node_data(self):
 
+    """
+    check_node_data() makes sure that if a token has been moved since being placed, that its data 
+    (name and position) is correctly reflected in its respective graph and on the board
+    """
+    def check_node_data(self):
+        # Loop through board
         for y in range(0, ROWS):
             for x in range(0, COLUMNS):
                 token = self.__board[y][x]
 
+                # If a token exists in that spot
                 if token != 0:
-
-                    print(f"T Name {token.get_token_name()} T Pos {token.get_position()}")
-                    print(f"{x}, {ROWS - y -1}")
-
                     name_board_cond = (token.get_token_name() == str(f"[{x}, {ROWS - y -1}]"))
                     pos_board_cond = (str(token.get_position()) == str(f"[{x}, {ROWS - y -1}]"))
 
                     # If the token has been shifted, update the name of the token 
                     if not name_board_cond or not pos_board_cond:
-                        print("DISCREPANCY !!!")
-
-                        #token.get_player().update_token_in_graph([x, ROWS - y -1])
-                        
-
                         token.set_position([x, ROWS - y -1])
                         token.set_token_name(str(f"[{x}, {ROWS - y -1}]"))
 
-                        
-
-                    
-                    
-    
+                
     def update_graphs(self):
 
         self.check_node_data()
@@ -346,8 +329,8 @@ class ConnectFourTwist:
 
     def calc_possible_moves(self):
         possible_moves = []
-        directions = ["left", "right", "no direction"]
-        #directions = ["no direction"]
+        #directions = ["left", "right", "no direction"]
+        directions = ["no direction"]
 
         # Generate possible moves for dropping a token in each column
         possible_drops = self.calc_possible_drops()
@@ -372,7 +355,7 @@ class ConnectFourTwist:
         best_move, best_score = self.minimax(depth, True)
         return best_move, best_score
 
-    def minimax(self, depth, maximizing_player):
+    def minimax(self, depth, alpha, beta, maximizing_player):
         if depth == 0 or self.get_won():
             return None, self.get_total_score()
 
@@ -384,10 +367,13 @@ class ConnectFourTwist:
             for move in possible_moves:
                 child_node = copy.deepcopy(self)
                 child_node.player_turn(*move)
-                _, score = child_node.minimax(depth - 1, False)
+                _, score = child_node.minimax(depth - 1, alpha, beta, False)
                 if score > max_score:
                     max_score = score
                     best_move = move
+                alpha = max(alpha, max_score)
+                if beta <= alpha:
+                    break  # Beta cut-off
             return best_move, max_score
 
         else:
@@ -398,16 +384,46 @@ class ConnectFourTwist:
             for move in possible_moves:
                 child_node = copy.deepcopy(self)
                 child_node.player_turn(*move)
-                _, score = child_node.minimax(depth - 1, True)
+                _, score = child_node.minimax(depth - 1, alpha, beta, True)
                 if score < min_score:
                     min_score = score
                     best_move = move
+                beta = min(beta, min_score)
+                if beta <= alpha:
+                    break  # Alpha cut-off
             return best_move, min_score
+        
+
+    def negamax(self, depth, alpha, beta, color):
+        if depth == 0 or self.get_won():
+            score = color * self.get_total_score()
+            #print(f"At depth {depth}: Score: {score}")
+            return None, score
+
+        max_score = float('-inf')
+        possible_moves = self.calc_possible_moves()
+        best_move = None
+
+        for move in possible_moves:
+            child_node = copy.deepcopy(self)
+            child_node.player_turn(*move)
+            _, score = child_node.negamax(depth - 1, -beta, -alpha, -color)
+            score = -score
+            if score > max_score:
+                max_score = score
+                best_move = move
+            alpha = max(alpha, score)
+            if alpha >= beta:
+                #print(f"At depth {depth}: Pruned - Beta cut-off")
+                break
+
+        return best_move, max_score
+    
         
     def set_display(self, display_board, print_board):
         self.__display_board = display_board
         self.__print_game_stats = print_board
-    
+
 
 def run_game():
     game = ConnectFourTwist(display_board=False, print_game_stats=False)
@@ -432,15 +448,21 @@ def run_game():
         print(f"Move: {move}, Score: {score}")
 
 def run_minimax():
+    moves_played = []
+    
     game = ConnectFourTwist(display_board=False, print_game_stats=False)
 
 
     #best_move, best_score = game.run_minimax(depth=3)  # Adjust depth as needed
     #print(f"Best Move: {best_move}, Best Score: {best_score}")
 
-    for x in range(0, 10):
-        best_move, best_score = game.run_minimax(depth=3)  # Adjust depth as needed
+    for x in range(0, 5):
+    #while not game.get_won():
+        best_move, best_score = game.run_minimax(depth=5)  # Adjust depth as needed
         print(f"Best Move: {best_move}, Best Score: {best_score}")
+
+        moves_played.append(best_move)
+
         col = best_move[0]
         direction = best_move[1]
         rotation = best_move[2]
@@ -449,8 +471,53 @@ def run_minimax():
         game.player_turn(col, direction, rotation)
         game.set_display(False, False)
 
+    # output the moves that have been played 
+    for move in moves_played:
+        print(move)
+    #print(f"Best Move: {best_move}, Best Score: {best_score}")
 
-    print(f"Best Move: {best_move}, Best Score: {best_score}")
+
+def get_user_move():
+    col = int(input("please enter col"))
+    #direction = str(input("please enter direction"))
+    #rotation_row = int(input("please enter rotation_row"))
+    direction = "no direction"
+    rotation_row = 0
+
+    return col, direction, rotation_row
+
+def play_against_minimax():
+    game = ConnectFourTwist(display_board=False, print_game_stats=False)
+
+    for _ in range(0, 5):
+        user_move = get_user_move()
+        game.set_display(False, True)
+        game.player_turn(*user_move)
+        game.set_display(False, False)
+
+
+        best_move, best_score = game.minimax(5, float('-inf'), float('inf'), True)  # Adjust depth as needed
+        print(f"Best Move: {best_move}, Best Score: {best_score}")
+        game.set_display(False, True)
+        game.player_turn(*best_move)
+        game.set_display(False, False)
+
+
+def play_against_negamax():
+    game = ConnectFourTwist(display_board=False, print_game_stats=False)
+
+    for _ in range(0, 10):
+        user_move = get_user_move()
+        game.set_display(False, True)
+        game.player_turn(*user_move)
+        game.set_display(False, False)
+
+
+        best_move, best_score = game.negamax(6, float('-inf'), float('inf'), True)  # Adjust depth as needed
+        print(f"Best Move: {best_move}, Best Score: {best_score}")
+        game.set_display(False, True)
+        game.player_turn(*best_move)
+        game.set_display(False, False)
 
 
 
@@ -500,14 +567,14 @@ def test_checkerboard():
 
     
 
-
 #run_minimax()
 
 #run_game()
-#run_minimax()
+#0run_minimax()
 
 
-rotation_win()
+#rotation_win()
 
 #test_horizontal_lines()
 #test_checkerboard()
+play_against_negamax()

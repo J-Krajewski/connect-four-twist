@@ -3,6 +3,10 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from Token import Token
 
+TWO_NODES_CONNECTED_SCORE = 20
+THREE_NODES_CONNECTED_SCORE = 80
+FOUR_NODES_CONNECTED_SCORE = 1000
+
 
 SCORE_PER_CONNECTED_NODE = 5
 LABELS = ["horizontal", "vertical", "diagonal lru", "diagonal lrd"]
@@ -49,11 +53,12 @@ class Player():
         
         print(f"Player {self.__number} Paths: ")
         for label in LABELS:
-            print(f"{label}: {self.__paths[label]}")
+            print(f"{label}: {self.__paths[label]}  - SCORE {self.__paths_scored[label]}")
+            #print(f"{label}: {self.__paths_scored[label]}")
 
-        print(f"Player {self.__number} Path Scores:")
-        for label in LABELS:
-            print(f"{label}: {self.__paths_scored[label]}")
+        #print(f"Player {self.__number} Path Scores:")
+        #for label in LABELS:
+        #    print(f"{label}: {self.__paths_scored[label]}")
 
         print(f"Total Path Score: {self.__score_total}")
 
@@ -110,6 +115,7 @@ class Player():
     
     def calculate_path_scores(self):
         # Reset path scores and the total
+        score = 0
         self.__paths_scored = {}
         self.__score_total = 0
 
@@ -118,26 +124,26 @@ class Player():
             #paths = self.longest_path_with_label(label)
             paths = self.all_paths_with_label(label)
 
-
             #print(paths)
             #score = sum(len(path) * SCORE_PER_CONNECTED_NODE for path in paths)
             # Exponential Scoring 
-            score = sum(len(path) ** 3 * SCORE_PER_CONNECTED_NODE for path in paths)
+            #score = sum(len(path) ** 3 * SCORE_PER_CONNECTED_NODE for path in paths)
 
-            # This should make prioritising scoring for connected paths 
-            #if len(paths) > 1:
-            #    score *= 2
+            if any(len(path) == 2 for path in paths):
+                score += TWO_NODES_CONNECTED_SCORE
 
+            if any(len(path) == 3 for path in paths):
+                score += THREE_NODES_CONNECTED_SCORE
 
-            # Assign infinity score for paths of length four
-            if any(len(path) >= 4 for path in paths):
-                score = float('inf')
-                #self.__score_total = score
-           
+            # Assign very high score for a win
+            if any(len(path) == 4 for path in paths):
+                score += FOUR_NODES_CONNECTED_SCORE
 
-            #print(score)
             self.__paths_scored[label] = score
             self.__score_total += score
+            score = 0
+
+        return self.__score_total
 
 
     def check_win(self, print_game_stats):
