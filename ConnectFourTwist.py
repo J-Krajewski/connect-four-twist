@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import copy
 import math
-
+import itertools
+import random
 
 from Player import Player 
 from Token import Token
@@ -23,11 +24,6 @@ TWO_CONNNECTED_NODES = 10
 
 PLAYER_1 = Player("red", 1)
 PLAYER_2 = Player("yellow", 2)
-## BLOCK_THREE_CONNECTED_NODES = 15
-## BLOCK_TWO_CONNECTED_NODES = 10
-
-# This class represents the game state 
-
 
 
 class ConnectFourTwist:
@@ -60,17 +56,84 @@ class ConnectFourTwist:
             row_output = ""
             for token in row:
                 if token == 0:
-                    #print(token)
                     row_output += str(f"{Style.RESET_ALL}{token}")
-                else:
-                    #print(token.get_symbol())
-                    row_output += str(f"{token.get_player().get_text_colour()}{token.get_symbol()}")
+                if token == 1:
+                    row_output += str(f"{self.__player1.get_text_colour()}{1}")
+                if token == 2:
+                    row_output += str(f"{self.__player2.get_text_colour()}{2}")
 
             print(row_output)
         print(f"{Style.RESET_ALL}=====================")
 
+    def column_is_not_full(self, board, col):
+        # checking top position only of given column
+        return board[ROWS - 1][col] == 0
+    
+    def get_next_available_row(self, col):
+        # finding the next free position on that column 
+        for row in range(ROWS):
+            if self.__board[row][col] == 0:
+                return row
+            
+    def drop_token(self, board, row, col, piece):
+        board[row][col] = piece
+
+    def check_for_win(self, board, player_number):
+        # Horizontal Check - Columns are cyclical (hence mod operation)
+        for col in range(COLUMNS):
+            for row in range(ROWS):
+                if board[row][col] != 0: # Skip if first token is empty
+                    t1 = board[row][col]
+                    t2 = board[row][(col + 1)%(COLUMNS - 1)]
+                    t3 = board[row][(col + 2)%(COLUMNS - 1)]
+                    t4 = board[row][(col + 3)%(COLUMNS - 1)]
+                    
+                    if t1 == player_number and t2 == player_number and t3 == player_number and t4 == player_number:
+                        return True 
+                    
+                
+        # Vertical Check
+        for col in range(COLUMNS):
+            for row in range(ROWS - 3):
+                
+                if board[row][col] != 0: # Skip if first token is empty
+                    t1 = board[row][col]
+                    t2 = board[row + 1][col]
+                    t3 = board[row + 2][col]
+                    t4 = board[row + 3][col]
+
+                    if t1 == player_number and t2 == player_number and t3 == player_number and t4 == player_number:
+                        return True 
+                    
+        # Diagonal Left Right Up Check - Also Cyclical
+        for col in range(COLUMNS):
+            for row in range(ROWS - 3):
+                if board[row][col] != 0: # Skip if first token is empty
+                    t1 = board[row][col]
+                    t2 = board[row + 1][(col + 1)%(COLUMNS - 1)]
+                    t3 = board[row + 2][(col + 2)%(COLUMNS - 1)]
+                    t4 = board[row + 3][(col + 3)%(COLUMNS - 1)]
+                    
+                    if t1 == player_number and t2 == player_number and t3 == player_number and t4 == player_number:
+                        return True 
+                           
+                                
+        # Diagonal Left Right Up Check - Also Cyclical
+        for col in range(COLUMNS):
+            for row in range(ROWS - 3):
+                if board[row][col] != 0: # Skip if first token is empty
+                    t1 = board[row][col]
+                    t2 = board[row - 1][(col + 1)%(COLUMNS - 1)]
+                    t3 = board[row - 2][(col + 2)%(COLUMNS - 1)]
+                    t4 = board[row - 3][(col + 3)%(COLUMNS - 1)]
+                    
+                    if t1 == player_number and t2 == player_number and t3 == player_number and t4 == player_number:
+                        return True 
+                    
+        return False           
+      
+
     def display_board(self):
-        
         colourmap = {'white': 0, 'red': 1, 'yellow': 2} 
         custom_cmap = plt.cm.colors.ListedColormap(['white', 'red', 'yellow'])
         board_colours = np.zeros((len(self.__board), len(self.__board[0])), dtype=int)
@@ -111,8 +174,7 @@ class ConnectFourTwist:
         axs[2].set_title('Player 2 Nodes')
 
         plt.show()
-
-        
+ 
     def apply_gravity(self):
         for col in range(self.__cols):
             for row in range(self.__rows - 1, 0, -1):
@@ -140,98 +202,14 @@ class ConnectFourTwist:
             print(f"{direction} is not a direction option, rotation not applied")
             return False  
         
-    def drop_piece(self, col, player):
-        for row in range(self.__rows -1, -1, -1):
-            if self.__board[row][col] == 0:
-                token = Token(player, [col, ROWS - row - 1])
-                self.__board[row][col] = token
-                player.add_token(str(token.get_position()))
-                
-                return True # piece is allowed to be dropped here
-        return False # Col is full, cant drop piece 
-
-
-    """
-    check_node_data() makes sure that if a token has been moved since being placed, that its data 
-    (name and position) is correctly reflected in its respective graph and on the board
-    """
-    def check_node_data(self):
-        # Loop through board
-        for y in range(0, ROWS):
-            for x in range(0, COLUMNS):
-                token = self.__board[y][x]
-
-                # If a token exists in that spot
-                if token != 0:
-                    name_board_cond = (token.get_token_name() == str(f"[{x}, {ROWS - y -1}]"))
-                    pos_board_cond = (str(token.get_position()) == str(f"[{x}, {ROWS - y -1}]"))
-
-                    # If the token has been shifted, update the name of the token 
-                    if not name_board_cond or not pos_board_cond:
-                        token.set_position([x, ROWS - y -1])
-                        token.set_token_name(str(f"[{x}, {ROWS - y -1}]"))
-
-                
-    def update_graphs(self):
-
-        self.check_node_data()
-
-        self.__player1.get_graph().clear()
-        self.__player2.get_graph().clear()
-
-        for y in range(0, ROWS):
-            for x in range(0, COLUMNS):
-                token = self.__board[y][x]
-
-                if token != 0:
-                    token.get_player().add_token(token.get_token_name())
-
-                    player = token.get_player()
-
-                    ## Need to find what position and value the token was previously rendered as
-
-                    #graph_nodes_edges = player.get_all_elements()
-                    #print(f"Graph Node and Edge: {graph_nodes_edges}")
-
-                    # check  and update horizontal
-                    right_token = self.__board[y][(x+1)%(COLUMNS)]
-                    if right_token != 0: # slot to the right is not empty
-                        if right_token.get_player() == player: # Token to the right is same colour
-                            
-                            token_name = str(token.get_position())
-                            right_token_name = str(right_token.get_position())
-                            player.add_horizontal_connection(token_name, right_token_name)
-                            
-                    # check and update vertical
-                    if y < ROWS - 1:
-                        #print(y+1)
-                        upper_token = self.__board[y+1][(x)]
-                        if upper_token != 0: # slot above is not empty
-                            
-                            #print(f"upper token:{upper_token.get_position()}")
-                            #print(f"lower token:{token.get_position()}")
-                            if upper_token.get_player() == player: # If token above is the same colour
-                                
-                                player.add_vertical_connection(token.get_token_name(), upper_token.get_token_name())
-
-                    # check and update diagonal LRU
-                    if y != 0:
-                        upper_right_token = self.__board[y-1][(x+1)%(COLUMNS)]
-                        if upper_right_token != 0:
-                            if upper_right_token.get_player() == player: 
-                                player.add_diagonal_lru_connection(token.get_token_name(), upper_right_token.get_token_name())
-
-                    # check and update diagonal LRD
-                    if y != (ROWS-1):
-                        lower_right_token = self.__board[y+1][(x+1)%(COLUMNS)]
-                        if lower_right_token != 0:
-                            if lower_right_token.get_player() == player:
-                                player.add_diagonal_lrd_connection(token.get_token_name(), lower_right_token.get_token_name())
-
-                    # If the token has no relations, just add it to its respective tree !
-                    
-                    
-
+    #def drop_piece(self, col, player):
+    #    for row in range(self.__rows -1, -1, -1):
+    #        if self.__board[row][col] == 0:
+    #            #token = Token(player, [col, ROWS - row - 1])
+    #            self.__board[row][col] = player.get_number()
+    #            
+    #            return True # piece is allowed to be dropped here
+    #    return False # Col is full, cant drop piece 
 
     
     def player_turn(self, drop_col, direction, rotation_row):
@@ -243,7 +221,7 @@ class ConnectFourTwist:
 
         # Dropping the token
         self.drop_piece(col=drop_col, player=self.__current_player)
-        self.update_graphs()
+        #self.update_graphs()
 
         if self.__print_game_stats:
             self.print_board()
@@ -251,7 +229,9 @@ class ConnectFourTwist:
         if self.__display_board:
             self.display_board()
         
-        self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
+        #self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
+        print(self.check_for_win(self.__current_player.get_number()))
+
 
         # If the player chooses to rotate the board, rotate the board
         if direction != "no direction":
@@ -263,9 +243,9 @@ class ConnectFourTwist:
             if self.__display_board:
                 self.display_board()
             
-            self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
-
-        self.update_graphs()
+            #self.__won, self.__win_direction, self.__win_tokens, self.__winner = self.get_current_player().check_win(self.__print_game_stats)
+            print(self.check_for_win(self.__current_player.get_number()))
+        #self.update_graphs()
 
         self.__turn_number += 1
 
@@ -278,6 +258,63 @@ class ConnectFourTwist:
             print(f"Turns: {winner_text_colour}{self.__turn_number}{Style.RESET_ALL}")
             print(f"Win Direction: {winner_text_colour}{self.__win_direction}{Style.RESET_ALL}")
             print(f"Win Tokens: {winner_text_colour}{self.__win_tokens}{Style.RESET_ALL}")
+
+    def score_block(self, block, token):
+        score = 0
+
+        if token == self.__player1.get_number():
+            opposition_token = self.__player2.get_number()
+        else:
+            opposition_token = self.__player1.get_number()
+
+        if block.count(token) == 4:                             # connect 4
+            score += 100
+        elif block.count(token) == 3 and block.count(0) == 1:   # 3 connected with space for 1
+            score += 5
+        elif block.count(token) == 2 and block.count(0) == 2:   # 2 connected with space for 2
+            score += 2
+
+        # Check if the enemy player can win on the next move   
+        elif block.count(token) == 3 and block.count(0) == 1:
+            score -= 4
+        
+        return score
+
+    def score_board(self, board, token):
+
+        # Horizontal scoring
+        #for row in range(ROWS):
+        #    #rows = [int(i) for i in list(board[row,:])]
+        #    rows = [int(i) for i in list(board[row,:])]
+        #    for col in range(COLUMNS):
+        #    
+        #        block = rows[col:(col+TOKENS_TO_WIN % COLUMNS - 1)]
+        #        print(block)
+        #        score += self.score_block(block, token)
+
+        
+        # Vertical scoring
+        #for col in range(COLUMNS):
+        #    cols = [int(i) for i in list(board[:,col])]
+        #    for r in range(ROWS-3):
+        #        block = cols[r:r+TOKENS_TO_WIN]
+        #        print(block)
+        #        score += self.score_block(block, token)
+
+        print("TEMP")
+
+        return 10
+
+        # Implement Diagonal
+
+    def is_leaf_node(self, board):
+        condition1 = self.check_for_win(board, self.__player1)
+        condition2 = self.check_for_win(board, self.__player2)
+        no_more_moves = len(self.find_possible_locations(board)) == 0
+
+        return condition1 or condition2 or no_more_moves
+
+    
 
     def get_won(self):
         return self.__won
@@ -348,233 +385,133 @@ class ConnectFourTwist:
 
         return possible_moves    
 
-    def get_total_score(self):
-        return self.__current_player.get_score_total()
     
-    def run_minimax(self, depth):
-        best_move, best_score = self.minimax(depth, True)
-        return best_move, best_score
+    
+    def minimax(self, board, depth, alpha, beta, maximizingPlayer):
+        valid_locations = self.find_possible_locations(board)
+        is_terminal = self.is_leaf_node(board)
 
-    def minimax(self, depth, alpha, beta, maximizing_player):
-        if depth == 0 or self.get_won():
-            return None, self.get_total_score()
+        if depth == 0 or is_terminal:
+            if is_terminal:
+                if self.check_for_win(board, self.__player2.get_number()):
+                    return (None, 100000000000000)
+                elif self.check_for_win(board, self.__player1.get_number()):
+                    return (None, -10000000000000)
+                else: # Game is over, no more valid moves
+                    return (None, 0)
+            else: # Depth is zero
+                return (None, self.score_board(board, self.__player2.get_number()))
+            
+        if maximizingPlayer:
+            value = -math.inf
+            column = random.choice(valid_locations)
+            for col in valid_locations:
+                row = self.get_next_open_row(board, col)
 
-        if maximizing_player:
-            max_score = float('-inf')
-            possible_moves = self.calc_possible_moves()
-            best_move = None
+                print(row)
 
-            for move in possible_moves:
-                child_node = copy.deepcopy(self)
-                child_node.player_turn(*move)
-                _, score = child_node.minimax(depth - 1, alpha, beta, False)
-                if score > max_score:
-                    max_score = score
-                    best_move = move
-                alpha = max(alpha, max_score)
-                if beta <= alpha:
-                    break  # Beta cut-off
-            return best_move, max_score
+                b_copy = board.copy()
+                self.drop_token(b_copy, row, col, self.__player2.get_number())
+                new_score = self.minimax(b_copy, depth-1, alpha, beta, False)[1]
+                if new_score > value:
+                    value = new_score
+                    column = col
+                alpha = max(alpha, value)
+                if alpha >= beta:
+                    break
+            return column, value
 
-        else:
-            min_score = float('inf')
-            possible_moves = self.calc_possible_moves()
-            best_move = None
+        else: # Minimizing player
+            value = math.inf
+            column = random.choice(valid_locations)
+            for col in valid_locations:
+                row = self.get_next_open_row(board, col)
+                b_copy = board.copy()
+                self.drop_token(b_copy, row, col, self.__player1.get_number())
+                new_score = self.minimax(b_copy, depth-1, alpha, beta, True)[1]
+                if new_score < value:
+                    value = new_score
+                    column = col
+                beta = min(beta, value)
+                if alpha >= beta:
+                    break
+            return column, value
+        
+    def find_possible_locations(self, board):
+        possible_locations = []
+        for col in range(COLUMNS):
+            if self.column_is_not_full(board, col):
+                possible_locations.append(col)
 
-            for move in possible_moves:
-                child_node = copy.deepcopy(self)
-                child_node.player_turn(*move)
-                _, score = child_node.minimax(depth - 1, alpha, beta, True)
-                if score < min_score:
-                    min_score = score
-                    best_move = move
-                beta = min(beta, min_score)
-                if beta <= alpha:
-                    break  # Alpha cut-off
-            return best_move, min_score
+        print(possible_locations)
+        return possible_locations
+    
+    def get_next_open_row(self, board, col):
+
         
 
-    def negamax(self, depth, alpha, beta, color):
-        if depth == 0 or self.get_won():
-            score = color * self.get_total_score()
-            #print(f"At depth {depth}: Score: {score}")
-            return None, score
+        for row in range(ROWS):
+            print(f"{col}, {row} - {board[row][col]}")
+            
+            if board[row][col] == 0:
+                return row
 
-        max_score = float('-inf')
-        possible_moves = self.calc_possible_moves()
-        best_move = None
+    def get_best_move(self, board, piece):
 
-        for move in possible_moves:
-            child_node = copy.deepcopy(self)
-            child_node.player_turn(*move)
-            _, score = child_node.negamax(depth - 1, -beta, -alpha, -color)
-            score = -score
-            if score > max_score:
-                max_score = score
-                best_move = move
-            alpha = max(alpha, score)
-            if alpha >= beta:
-                #print(f"At depth {depth}: Pruned - Beta cut-off")
-                break
+        valid_locations = self.find_possible_locations(board)
+        best_score = -10000
+        best_col = random.choice(valid_locations)
+        for col in valid_locations:
+            row = self.get_next_open_row(board, col)
+            temp_board = board.copy()
+            self.drop_token(temp_board, row, col, piece)
+            score = self.score_board(temp_board, piece)
+            if score > best_score:
+                best_score = score
+                best_col = col
 
-        return best_move, max_score
-    
-        
+        return best_col
+
+      
     def set_display(self, display_board, print_board):
         self.__display_board = display_board
         self.__print_game_stats = print_board
 
+    def get_board(self):
+        return self.__board
+    
+    def get_player_1(self):
+        return self.__player1
+
+    def get_player_2(self):
+            return self.__player2
 
 def run_game():
     game = ConnectFourTwist(display_board=False, print_game_stats=False)
-    possible_moves = game.calc_possible_moves()
-    scored_moves = []
-
-
-    for possible_move in possible_moves:
-        # Create a copy of the game state for each possible move
-        test_gamestate = copy.deepcopy(game)
-
-        # Simulate the move on the copied game state
-        drop_col, direction, rotation_row = possible_move
-        test_gamestate.player_turn(drop_col=drop_col, direction=direction, rotation_row=rotation_row)
-
-        # Calc score and add it to the list of scores
-        move_score = test_gamestate.get_total_score()  
-        scored_moves.append((possible_move, move_score))
-
-    # Now scored_moves contains tuples of possible moves and their scores
-    for move, score in scored_moves:
-        print(f"Move: {move}, Score: {score}")
-
-def run_minimax():
-    moves_played = []
+    turn = 0
     
-    game = ConnectFourTwist(display_board=False, print_game_stats=False)
+    col = 0 
+    row = game.get_next_open_row(game.get_board(), col)
 
+    print(row)
+    game.drop_token(game.get_board(), col, row, game.get_player_1().get_number())
+    turn += 1
 
-    #best_move, best_score = game.run_minimax(depth=3)  # Adjust depth as needed
-    #print(f"Best Move: {best_move}, Best Score: {best_score}")
+    game.print_board()
 
-    for x in range(0, 5):
-    #while not game.get_won():
-        best_move, best_score = game.run_minimax(depth=5)  # Adjust depth as needed
-        print(f"Best Move: {best_move}, Best Score: {best_score}")
+    ## AI TURN
+    col, minimax_score = game.minimax(game.get_board(), 5, -math.inf, math.inf, True)   
 
-        moves_played.append(best_move)
+    if game.column_is_not_full(game.get_board(), col):
+        row = game.get_next_open_row(game.get_board(), col)
 
-        col = best_move[0]
-        direction = best_move[1]
-        rotation = best_move[2]
+        print(row)
+        game.drop_token(game.get_board(), row, col, game.get_player_2().get_number())
 
-        game.set_display(False, True)
-        game.player_turn(col, direction, rotation)
-        game.set_display(False, False)
-
-    # output the moves that have been played 
-    for move in moves_played:
-        print(move)
-    #print(f"Best Move: {best_move}, Best Score: {best_score}")
-
-
-def get_user_move():
-    col = int(input("please enter col"))
-    #direction = str(input("please enter direction"))
-    #rotation_row = int(input("please enter rotation_row"))
-    direction = "no direction"
-    rotation_row = 0
-
-    return col, direction, rotation_row
-
-def play_against_minimax():
-    game = ConnectFourTwist(display_board=False, print_game_stats=False)
-
-    for _ in range(0, 5):
-        user_move = get_user_move()
-        game.set_display(False, True)
-        game.player_turn(*user_move)
-        game.set_display(False, False)
-
-
-        best_move, best_score = game.minimax(5, float('-inf'), float('inf'), True)  # Adjust depth as needed
-        print(f"Best Move: {best_move}, Best Score: {best_score}")
-        game.set_display(False, True)
-        game.player_turn(*best_move)
-        game.set_display(False, False)
-
-
-def play_against_negamax():
-    game = ConnectFourTwist(display_board=False, print_game_stats=False)
-
-    for _ in range(0, 10):
-        user_move = get_user_move()
-        game.set_display(False, True)
-        game.player_turn(*user_move)
-        game.set_display(False, False)
-
-
-        best_move, best_score = game.negamax(6, float('-inf'), float('inf'), True)  # Adjust depth as needed
-        print(f"Best Move: {best_move}, Best Score: {best_score}")
-        game.set_display(False, True)
-        game.player_turn(*best_move)
-        game.set_display(False, False)
-
-
-
-def rotation_win():   
-    game = ConnectFourTwist(display_board=True, print_game_stats=True)
-    game.player_turn(0, "no direction", 3)
-    game.player_turn(1, "no direction", 3)
-    game.player_turn(0, "no direction", 3)
-    game.player_turn(1, "right", 3)
-    game.player_turn(0, "no direction", 3)
-    game.player_turn(1, "no direction", 3)
+    game.print_board()
     
-def test_horizontal_lines():
-    game = ConnectFourTwist(display_board=True, print_game_stats=True)
-    count = 0
-    col = 0
-    while game.get_won() == False:
-        col = col % ROWS
-        count += 1
-        
-        game.player_turn(drop_col=col, direction="no direction", rotation_row=0)
-
-        if count > 1:
-            count = 0
-            col += 1
-        
-    else:
-        
-        print(game.print_win_statistics())
-
-def test_checkerboard():
-    game = ConnectFourTwist(display_board=True, print_game_stats=True)
-    count = 0
-    col = 0
-    while game.get_won() == False:
-        col = col % ROWS
-        count += 1
-        
-        game.player_turn(drop_col=col, direction="no direction", rotation_row=0)
-
-        if count > ROWS - 1:
-            count = 0
-            col += 1
-        
-    else:
-        print(game.print_win_statistics())
-
-    
-
-#run_minimax()
-
-#run_game()
-#0run_minimax()
+    turn += 1
 
 
-#rotation_win()
 
-#test_horizontal_lines()
-#test_checkerboard()
-play_against_negamax()
+run_game()
