@@ -69,10 +69,11 @@ class ConnectFourTwist:
         # checking top position only of given column
         return board[ROWS - 1][col] == 0
     
-    def get_next_available_row(self, col):
+    def get_next_available_row(self, board, col):
         # finding the next free position on that column 
         for row in range(ROWS):
-            if self.__board[row][col] == 0:
+            print(f"{col}, {row} - {board[row][col]}")
+            if board[row][col] == 0:
                 return row
             
     def drop_token(self, board, row, col, piece):
@@ -389,7 +390,10 @@ class ConnectFourTwist:
     
     def minimax(self, board, depth, alpha, beta, maximizingPlayer):
         valid_locations = self.find_possible_locations(board)
+        
         is_terminal = self.is_leaf_node(board)
+
+        #print(valid_locations)
 
         if depth == 0 or is_terminal:
             if is_terminal:
@@ -405,8 +409,11 @@ class ConnectFourTwist:
         if maximizingPlayer:
             value = -math.inf
             column = random.choice(valid_locations)
+            print(f"Max Valid Locations {valid_locations}")
             for col in valid_locations:
-                row = self.get_next_open_row(board, col)
+                print(f"Max Valid Locations {valid_locations}")
+                print(f"max col from vl {col}")
+                row = self.get_next_available_row(board, col)
 
                 print(row)
 
@@ -424,8 +431,11 @@ class ConnectFourTwist:
         else: # Minimizing player
             value = math.inf
             column = random.choice(valid_locations)
+            print(f"Mini Valid Locations {valid_locations}")
             for col in valid_locations:
-                row = self.get_next_open_row(board, col)
+                print(f" Mini Valid Locations {valid_locations}")
+                print(f" Mini col from vl {col}")
+                row = self.get_next_available_row(board, col)
                 b_copy = board.copy()
                 self.drop_token(b_copy, row, col, self.__player1.get_number())
                 new_score = self.minimax(b_copy, depth-1, alpha, beta, True)[1]
@@ -443,18 +453,8 @@ class ConnectFourTwist:
             if self.column_is_not_full(board, col):
                 possible_locations.append(col)
 
-        print(possible_locations)
+        #print(possible_locations)
         return possible_locations
-    
-    def get_next_open_row(self, board, col):
-
-        
-
-        for row in range(ROWS):
-            print(f"{col}, {row} - {board[row][col]}")
-            
-            if board[row][col] == 0:
-                return row
 
     def get_best_move(self, board, piece):
 
@@ -462,7 +462,7 @@ class ConnectFourTwist:
         best_score = -10000
         best_col = random.choice(valid_locations)
         for col in valid_locations:
-            row = self.get_next_open_row(board, col)
+            row = self.get_next_available_row(board, col)
             temp_board = board.copy()
             self.drop_token(temp_board, row, col, piece)
             score = self.score_board(temp_board, piece)
@@ -491,7 +491,7 @@ def run_game():
     turn = 0
     
     col = 0 
-    row = game.get_next_open_row(game.get_board(), col)
+    row = game.get_next_available_row(game.get_board(), col)
 
     print(row)
     game.drop_token(game.get_board(), col, row, game.get_player_1().get_number())
@@ -503,7 +503,7 @@ def run_game():
     col, minimax_score = game.minimax(game.get_board(), 5, -math.inf, math.inf, True)   
 
     if game.column_is_not_full(game.get_board(), col):
-        row = game.get_next_open_row(game.get_board(), col)
+        row = game.get_next_available_row(game.get_board(), col)
 
         print(row)
         game.drop_token(game.get_board(), row, col, game.get_player_2().get_number())
