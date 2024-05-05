@@ -1,0 +1,51 @@
+======
+BEFORE ROTATION
+======
+100000
+200000
+200000
+102121
+212211
+======
+After left Rotation Applied on row 1
+======
+000000
+100000
+200000
+221211
+212211
+======
+BEFORE ROTATION
+======
+200000
+100000
+200000
+221211
+212211
+======
+After no direction Rotation Applied on row 3
+======
+200000
+100000
+200000
+221211
+212211
+======
+BEFORE ROTATION
+======
+200000
+100000
+210000
+221211
+212211
+======
+After left Rotation Applied on row 3
+======
+000000
+200000
+210001
+221211
+212211
+======
+GAME OVER
+Winner is negamax

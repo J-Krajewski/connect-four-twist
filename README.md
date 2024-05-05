@@ -1,7 +1,10 @@
-# connect-four-twist
+# connect-four-twist-and-turn
 
 # TODO 
 
-- Implement both ways of determining score 
+- Compare alpha beta pruning 
+- Compare against transposition tables 
+
+
 
 

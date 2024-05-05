@@ -1,0 +1,33 @@
+MINIMAX 1 - Before Rotation 
+======
+000000
+000000
+210000
+210011
+222121
+======
+MINIMAX - right Rotation Applied on Row 1
+======
+000000
+000000
+210000
+121001
+222121
+======
+NEGAMAX 2 - Before Rotation 
+======
+000000
+200000
+210000
+121001
+222121
+======
+NEGAMAX - left Rotation Applied on Row 1
+======
+000000
+200000
+210000
+210011
+222121
+======
+GAME OVER
