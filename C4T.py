@@ -29,7 +29,7 @@ OPP_NEGAMAX = 2
 
 WINDOW_LENGTH = 4
 
-DEPTH = 5
+DEPTH = 3
 
 
 class ConnectFourTwist:
@@ -169,6 +169,8 @@ class ConnectFourTwist:
                 board[r-3][(c + 3) % COLUMNS] == piece:
                     self.__win_direction = "lrd"
                     return True
+                
+    
     
                                                    
     def evaluate_window(self, window, piece, direction):
@@ -184,29 +186,29 @@ class ConnectFourTwist:
             multiplier = 1.5
 
         if window.count(piece) == 4:
-            score += 100000
+            score += 100
             score = score * multiplier
 
         if window.count(opp_piece) == 4:
-            score -= 100000
+            score -= 100
             score = score * multiplier
 
         elif window.count(piece) == 3 and window.count(EMPTY) == 1:
-            score += 2000
+            score += 5
             score = score * multiplier
             
         elif window.count(piece) == 2 and window.count(EMPTY) == 2:
-            score += 1000
+            score += 2
 
         # Ways you can lose in one move 
 
-        # If there is a free space next to three in a block, punish
-        if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
-            score -= 2000
+        # Vertically this is one move away from winning due to rotation move 
+        if window.count(piece) == 3 and window.count(opp_piece) == 1 and direction == "vertical":
+            score += 5
 
         # Vertically this is one move away from winning due to rotation move 
         if window.count(opp_piece) == 3 and window.count(piece) == 1 and direction == "vertical":
-            score -= 300
+            score -= 5
 
         return score
     
@@ -308,7 +310,20 @@ class ConnectFourTwist:
         return score
 
     def is_terminal_node(self, board):
-        return self.winning_move(board, 1) or self.winning_move(board, 2) or len(self.get_valid_locations(board)) == 0
+        p1_winning_move = self.winning_move(board, 1)
+        p2_winning_move = self.winning_move(board, 2)
+        no_more_moves = (len(self.get_valid_locations(board)) == 0)
+
+        if p1_winning_move:
+            print(f"P1 winning move - {p1_winning_move}")
+
+        if p2_winning_move:
+            print(f"P2 winning move - {p2_winning_move}")
+
+        if no_more_moves:
+            print("No More Moves")
+
+        return  p1_winning_move or p2_winning_move or no_more_moves
 
     def minimax(self, board, depth, alpha, beta, maximizingPlayer, node_count=0):
         valid_locations = self.get_valid_locations(board)
@@ -351,27 +366,30 @@ class ConnectFourTwist:
         if maximizingPlayer:
             value = -math.inf
             column = random.choice(valid_locations)
-            rotation_direction = None
-            rotation_row = None
-            for col in valid_locations:
-                for direction in ["left", "right", "no direction"]:
-                    for row in occupied_rows:
+            direction = None
+            row = None
+
+            for drop_col in valid_locations:
+                for rotation_direction in ["left", "right", "no direction"]:
+                    for rotation_row in occupied_rows:
                         b_copy = board.copy()
-                        b_copy = self.drop_piece(b_copy, row, col, MINIMAX)
+                        drop_row = self.get_next_open_row(b_copy, drop_col)
+
+                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, MINIMAX)
                         
-                        if direction != "no direction":
+                        if rotation_direction != "no direction":
                             # Rotate the board
-                            rotated_board = self.rotate_board(row, direction, b_copy, occupied_rows)
+                            rotated_board = self.rotate_board(rotation_row, rotation_direction, b_copy, occupied_rows)
                         else:
                             rotated_board = b_copy
 
                         new_score = self.minimax(rotated_board, depth-1, alpha, beta, False, node_count=node_count)[1]
                         if new_score > value:
-                            print(f"maximising player - new score {new_score} - dc: {col} rr: {row} rd: {rotation_direction}")
+                            print(f"maximising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
                             value = new_score
-                            column = col
-                            rotation_direction = direction
-                            rotation_row = row
+                            column = drop_col
+                            direction = rotation_direction
+                            row = rotation_row
                         alpha = max(alpha, value)
                         if alpha >= beta:
                             break
@@ -383,36 +401,38 @@ class ConnectFourTwist:
                 'type': 'exact' if value >= beta else ('lowerbound' if value > alpha else 'upperbound')
             }
 
-            return column, value, rotation_direction, rotation_row, node_count
+            return column, value, direction, row, node_count
 
         else: # Minimizing player
             value = math.inf
             column = random.choice(valid_locations)
             rotation_direction = None
             rotation_row = None
-            for col in valid_locations:
-                for direction in ["left", "right", "no direction"]:
-                    for row in occupied_rows:
+            for drop_col in valid_locations:
+                for rotation_direction in ["left", "right", "no direction"]:
+                    for rotation_row in occupied_rows:
                         b_copy = board.copy()
-                        b_copy = self.drop_piece(b_copy, row, col, OPP_MINIMAX)
+                        drop_row = self.get_next_open_row(b_copy, drop_col)
+
+                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, OPP_MINIMAX)
                         
-                        if direction != "no direction":
+                        if rotation_direction != "no direction":
                             # Rotate the board
-                            rotated_board = self.rotate_board(row, direction, b_copy, occupied_rows)
+                            rotated_board = self.rotate_board(rotation_row, rotation_direction, b_copy, occupied_rows)
                         else:
                             rotated_board = b_copy
 
                         new_score = self.minimax(rotated_board, depth-1, alpha, beta, True, node_count=node_count)[1]
                         if new_score < value:
-                            print(f"minimising player - new score {new_score} - dc: {col} rr: {row} rd: {rotation_direction}")
+                            print(f"minimising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
                             value = new_score
-                            column = col
-                            rotation_direction = direction
-                            rotation_row = row
+                            column = drop_col
+                            direction = rotation_direction
+                            row = rotation_row
                         beta = min(beta, value)
                         if alpha >= beta:
                             break
-            return column, value, rotation_direction, rotation_row, node_count
+            return column, value, direction, row, node_count
         
     def negamax(self, board, depth, alpha, beta, color):
         valid_locations = self.get_valid_locations(board)
@@ -843,13 +863,13 @@ def play_negamax_vs_random():
         
 #play_minimax_vs_negamax()
 
-#for _ in range(10):
-#    play_minimax_vs_random()
-
+#for _ in range(15):
 play_minimax_vs_random()
 
-#for _ in range(10):
-#    play_negamax_vs_random()
+#play_minimax_vs_random()
+
+#for _ in range(15):
+#play_negamax_vs_random()
 
 #print(winning_board)
 
