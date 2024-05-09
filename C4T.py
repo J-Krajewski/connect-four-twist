@@ -173,9 +173,6 @@ class ConnectFourTwist:
                                                    
     def evaluate_window(self, window, piece, direction):
         score = 0
-        #opp_piece = PLAYER_PIECE
-        #if piece == PLAYER_PIECE:
-        #    opp_piece = AI_PIECE
         multiplier = 1
         
         if piece == 1:
@@ -313,10 +310,13 @@ class ConnectFourTwist:
     def is_terminal_node(self, board):
         return self.winning_move(board, 1) or self.winning_move(board, 2) or len(self.get_valid_locations(board)) == 0
 
-    def minimax(self, board, depth, alpha, beta, maximizingPlayer):
+    def minimax(self, board, depth, alpha, beta, maximizingPlayer, node_count=0):
         valid_locations = self.get_valid_locations(board)
         occupied_rows = self.find_occupied_rows(board)
         is_terminal = self.is_terminal_node(board)
+
+        #print(node_count)
+        node_count += 1
 
         #if piece == 1:
         #    opp_piece = 2
@@ -365,8 +365,9 @@ class ConnectFourTwist:
                         else:
                             rotated_board = b_copy
 
-                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, False)[1]
+                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, False, node_count=node_count)[1]
                         if new_score > value:
+                            print(f"maximising player - new score {new_score} - dc: {col} rr: {row} rd: {rotation_direction}")
                             value = new_score
                             column = col
                             rotation_direction = direction
@@ -382,7 +383,7 @@ class ConnectFourTwist:
                 'type': 'exact' if value >= beta else ('lowerbound' if value > alpha else 'upperbound')
             }
 
-            return column, value, rotation_direction, rotation_row
+            return column, value, rotation_direction, rotation_row, node_count
 
         else: # Minimizing player
             value = math.inf
@@ -401,8 +402,9 @@ class ConnectFourTwist:
                         else:
                             rotated_board = b_copy
 
-                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, True)[1]
+                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, True, node_count=node_count)[1]
                         if new_score < value:
+                            print(f"minimising player - new score {new_score} - dc: {col} rr: {row} rd: {rotation_direction}")
                             value = new_score
                             column = col
                             rotation_direction = direction
@@ -410,7 +412,7 @@ class ConnectFourTwist:
                         beta = min(beta, value)
                         if alpha >= beta:
                             break
-            return column, value, rotation_direction, rotation_row
+            return column, value, rotation_direction, rotation_row, node_count
         
     def negamax(self, board, depth, alpha, beta, color):
         valid_locations = self.get_valid_locations(board)
@@ -595,7 +597,9 @@ def random_turn(game, board, turn, piece):
 
 def minimax_turn(game, board, turn, piece):
     
-    column, value, rotation_direction, rotation_row = game.minimax(board, DEPTH, -math.inf, math.inf, True)
+    column, value, rotation_direction, rotation_row, node_count = game.minimax(board, DEPTH, -math.inf, math.inf, True)
+    print(node_count)
+
 
     if (column != None):
         if game.is_valid_location(board, column):
@@ -628,7 +632,7 @@ def minimax_turn(game, board, turn, piece):
 
 def negamax_turn(game, board, turn, piece):
 
-    column, value, rotation_direction, rotation_row = game.negamax(board, DEPTH, -math.inf, math.inf, 1)
+    column, value, rotation_direction, rotation_row = game.negamax(board, DEPTH, -math.inf, math.inf, NEGAMAX)
 
     if (column != None):
         if game.is_valid_location(board, column):
@@ -842,8 +846,10 @@ def play_negamax_vs_random():
 #for _ in range(10):
 #    play_minimax_vs_random()
 
-for _ in range(10):
-    play_negamax_vs_random()
+play_minimax_vs_random()
+
+#for _ in range(10):
+#    play_negamax_vs_random()
 
 #print(winning_board)
 

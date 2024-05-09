@@ -3,3 +3,6 @@ random,19,horizontal,5
 random,14,horizontal,5
 negamax,14,horizontal,5
 negamax,9,horizontal,5
+negamax,16,vertical,5
+random,11,vertical,5
+negamax,17,vertical,5

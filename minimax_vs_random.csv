@@ -25,3 +25,6 @@ random,12,horizontal,5
 random,21,lrd,5
 minimax,20,vertical,5
 random mover,15,vertical,5
+minimax,16,vertical,5
+minimax,10,horizontal,5
+minimax,16,lru,5

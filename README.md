@@ -4,7 +4,3 @@
 
 - Compare alpha beta pruning 
 - Compare against transposition tables 
-
-
-
-
