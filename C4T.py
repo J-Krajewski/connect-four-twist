@@ -21,7 +21,15 @@ EMPTY = 0
 PLAYER_PIECE = 1
 AI_PIECE = 2
 
+OPP_MINIMAX = 1
+MINIMAX = 2
+
+NEGAMAX = 1
+OPP_NEGAMAX = 2
+
 WINDOW_LENGTH = 4
+
+DEPTH = 5
 
 
 class ConnectFourTwist:
@@ -32,9 +40,12 @@ class ConnectFourTwist:
         self.__board = self.init_board()
         self.__game_over = False
         self.__transposition_table = {}
+
+        # Winning Stats Collected 
         self.__winner = None
         self.__total_turns = 0
         self.__starter = starter
+        self.__win_direction = None
 
     def init_board(self):
         board = np.zeros((ROWS,COLUMNS), dtype=int)
@@ -120,29 +131,44 @@ class ConnectFourTwist:
 
     def winning_move(self, board, piece):
         # Check horizontal locations for win
-        for c in range(COLUMNS-3):
+        for c in range(COLUMNS):
             for r in range(ROWS):
-                if board[r][c] == piece and board[r][c+1] == piece and board[r][c+2] == piece and board[r][c+3] == piece:
-                    return True
+                if board[r][(c + 3) % COLUMNS] == piece and \
+                    board[r][(c + 2) % COLUMNS] == piece and \
+                    board[r][(c + 1) % COLUMNS] == piece and \
+                    board[r][c] == piece:
+                        self.__win_direction = "horizontal"
+                        return True
 
         # Check vertical locations for win
         for c in range(COLUMNS):
             for r in range(ROWS-3):
-                if board[r][c] == piece and board[r+1][c] == piece and board[r+2][c] == piece and board[r+3][c] == piece:
-                    return True
-
-        # Check positively sloped diaganols
-        for c in range(COLUMNS-3):
-            for r in range(ROWS-3):
-                if board[r][c] == piece and board[r+1][c+1] == piece and board[r+2][c+2] == piece and board[r+3][c+3] == piece:
-                    return True
-
-        # Check negatively sloped diaganols
-        for c in range(COLUMNS-3):
-            for r in range(3, ROWS):
-                if board[r][c] == piece and board[r-1][c+1] == piece and board[r-2][c+2] == piece and board[r-3][c+3] == piece:
-                    return True
+                if board[r][c] == piece and \
+                    board[r+1][c] == piece and \
+                    board[r+2][c] == piece and \
+                    board[r+3][c] == piece:
+                        self.__win_direction = "vertical"
+                        return True
                 
+        # Check positively sloped diaganols (lru)
+        for c in range(COLUMNS):
+            for r in range(ROWS - 3):
+                if board[r][c] == piece and \
+                    board[r+1][(c + 1) % COLUMNS] == piece and \
+                    board[r+2][(c + 2) % COLUMNS] == piece and \
+                    board[r+3][(c + 3) % COLUMNS] == piece:
+                        self.__win_direction = "lru"
+                        return True
+                
+        # Check negatively sloped diaganols (lrd)
+        for c in range(COLUMNS):
+            for r in range(3, ROWS):
+                if board[r][c] == piece and \
+                board[r-1][(c + 1) % COLUMNS] == piece and \
+                board[r-2][(c + 2) % COLUMNS] == piece and \
+                board[r-3][(c + 3) % COLUMNS] == piece:
+                    self.__win_direction = "lrd"
+                    return True
     
                                                    
     def evaluate_window(self, window, piece, direction):
@@ -150,35 +176,106 @@ class ConnectFourTwist:
         #opp_piece = PLAYER_PIECE
         #if piece == PLAYER_PIECE:
         #    opp_piece = AI_PIECE
+        multiplier = 1
         
         if piece == 1:
             opp_piece = 2
         elif piece == 2:
             opp_piece = 1
 
+        if (direction == "vertical") or (direction == "lru") or (direction == "lrd"):
+            multiplier = 1.5
+
         if window.count(piece) == 4:
-            score += 1000
+            score += 100000
+            score = score * multiplier
+
+        if window.count(opp_piece) == 4:
+            score -= 100000
+            score = score * multiplier
+
         elif window.count(piece) == 3 and window.count(EMPTY) == 1:
-            score += 100
+            score += 2000
+            score = score * multiplier
+            
         elif window.count(piece) == 2 and window.count(EMPTY) == 2:
-            score += 10
+            score += 1000
 
         # Ways you can lose in one move 
 
         # If there is a free space next to three in a block, punish
         if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
-            score -= 1000
+            score -= 2000
 
         # Vertically this is one move away from winning due to rotation move 
-        if window.count(opp_piece) == 4 and window.count(piece) == 1 and direction == "vertical":
-            score -= 1000
-
         if window.count(opp_piece) == 3 and window.count(piece) == 1 and direction == "vertical":
-            score -= 1000
+            score -= 300
 
-        if window.count(opp_piece) == 2 and window.count(piece) == 1 and direction == "vertical":
-            score -= 1000
+        return score
+    
+    def evaluate_board(self, board, piece):
+        score = 0
+        score_value = 300
 
+        if piece == 1:
+            opp_piece = 2
+        elif piece == 2:
+            opp_piece = 1
+
+        # Checking for common win method  - which is a win in one turn 
+        # Currently only works for vertical
+        for row in range(ROWS - 2):
+            for col in range(COLUMNS):
+                token_1 = board[row][col]
+                token_2 = board[row + 1][col]
+                token_3 = board[row + 2][col]
+
+                tokens = [token_1, token_2, token_3]
+
+                # TODO if any of the tokens are 0 skip
+                
+                if tokens == [opp_piece, opp_piece, piece]:
+                    #print(tokens)
+                    #print("looking at token 3 and adjacent locations")
+                    left_token_3 = board[row + 2][(col - 1) % COLUMNS]
+                    right_token_3 = board[row + 2][(col + 1) % COLUMNS]
+
+                    # if the adjacent token to your piece is opp piece, punish
+                    if left_token_3 == opp_piece:
+                        score -= score_value
+                        print(f"{tokens} - left token 3: {left_token_3}")
+                    elif right_token_3 == opp_piece:
+                        score -= score_value
+                        print(f"{tokens} - right token 3: {right_token_3}")
+
+                elif tokens == [opp_piece, piece, opp_piece]:
+                    #print(tokens)
+                    #print("looking at token 2 and adjacent locations")
+                    left_token_2 = board[row + 1][(col - 1) % COLUMNS]
+                    right_token_2 = board[row + 1][(col + 1) % COLUMNS]
+
+                    # if the adjacent token to your piece is opp piece, punish
+                    if left_token_2 == opp_piece:
+                        score -= score_value
+                        print(f"{tokens} - left token 2: {left_token_2}")
+                    elif right_token_2 == opp_piece:
+                        score -= score_value
+                        print(f"{tokens} - right token 2: {right_token_2}")
+            
+                elif tokens == [piece, opp_piece, opp_piece]:
+                    #print(tokens)
+                    #print("looking at token 1 and adjacent locations")
+                    left_token_1 = board[row][(col - 1) % COLUMNS]
+                    right_token_1 = board[row][(col + 1) % COLUMNS]
+
+                    # if the adjacent token to your piece is opp piece, punish
+                    if left_token_1 == opp_piece:
+                        score -= score_value
+                        print(f"{tokens} - left token 1: {left_token_1}")
+                    elif right_token_1 == opp_piece:
+                        score -= score_value
+                        print(f"{tokens} - right token 1: {right_token_1}")
+                        
         return score
     
     def score_position(self, board, piece):
@@ -200,26 +297,21 @@ class ConnectFourTwist:
 
         # left right up diagonal
         for r in range(ROWS-3):
-            for c in range(COLUMNS-3):
-                window = [board[r+i][c+i] for i in range(WINDOW_LENGTH)]
+            for c in range(COLUMNS):
+                window = [board[r+i][(c + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
                 score += self.evaluate_window(window, piece, "lru")
 
         for r in range(ROWS-3):
-            for c in range(COLUMNS-3):
-                window = [board[r+3-i][c+i] for i in range(WINDOW_LENGTH)]
+            for c in range(COLUMNS):
+                window = [board[r-i][(c - i) % COLUMNS] for i in range(WINDOW_LENGTH)]
                 score += self.evaluate_window(window, piece, "lrd")
 
-        ## Check for common win method 
-        for c in range(COLUMNS):
-            col_array = [int(i) for i in list(board[:,c])]
-            for r in range(ROWS-2):
-                window = col_array[r:r+WINDOW_LENGTH+1]
-                score += self.evaluate_window(window, piece, "vertical")
-
+        #score += self.evaluate_board(board, piece)
+                
         return score
 
     def is_terminal_node(self, board):
-        return self.winning_move(board, PLAYER_PIECE) or self.winning_move(board, AI_PIECE) or len(self.get_valid_locations(board)) == 0
+        return self.winning_move(board, 1) or self.winning_move(board, 2) or len(self.get_valid_locations(board)) == 0
 
     def minimax(self, board, depth, alpha, beta, maximizingPlayer):
         valid_locations = self.get_valid_locations(board)
@@ -247,14 +339,14 @@ class ConnectFourTwist:
             
         if depth == 0 or is_terminal:
             if is_terminal:
-                if self.winning_move(board, AI_PIECE):
+                if self.winning_move(board, MINIMAX):
                     return (None, 100000000000000)
-                elif self.winning_move(board, PLAYER_PIECE):
+                elif self.winning_move(board, OPP_MINIMAX):
                     return (None, -10000000000000)
                 else: # Game is over, no more valid moves
                     return (None, 0)
             else: # Depth is zero
-                return (None, self.score_position(board, AI_PIECE))
+                return (None, self.score_position(board, MINIMAX))
             
         if maximizingPlayer:
             value = -math.inf
@@ -265,7 +357,7 @@ class ConnectFourTwist:
                 for direction in ["left", "right", "no direction"]:
                     for row in occupied_rows:
                         b_copy = board.copy()
-                        b_copy = self.drop_piece(b_copy, row, col, AI_PIECE)
+                        b_copy = self.drop_piece(b_copy, row, col, MINIMAX)
                         
                         if direction != "no direction":
                             # Rotate the board
@@ -301,7 +393,7 @@ class ConnectFourTwist:
                 for direction in ["left", "right", "no direction"]:
                     for row in occupied_rows:
                         b_copy = board.copy()
-                        b_copy = self.drop_piece(b_copy, row, col, PLAYER_PIECE)
+                        b_copy = self.drop_piece(b_copy, row, col, OPP_MINIMAX)
                         
                         if direction != "no direction":
                             # Rotate the board
@@ -341,14 +433,14 @@ class ConnectFourTwist:
             
         if depth == 0 or is_terminal:
             if is_terminal:
-                if self.winning_move(board, AI_PIECE):
+                if self.winning_move(board, NEGAMAX):
                     return (None, 100000000000000 * color)
-                elif self.winning_move(board, PLAYER_PIECE):
+                elif self.winning_move(board, OPP_NEGAMAX):
                     return (None, -10000000000000 * color)
                 else: # Game is over, no more valid moves
                     return (None, 0)
             else: # Depth is zero
-                return (None, color * self.score_position(board, AI_PIECE))
+                return (None, color * self.score_position(board, NEGAMAX))
             
         value = -math.inf
         column = random.choice(valid_locations)
@@ -393,6 +485,8 @@ class ConnectFourTwist:
                 valid_locations.append(col)
         return valid_locations
     
+    
+    
     def get_game_over(self):
         return self.__game_over
     
@@ -413,11 +507,22 @@ class ConnectFourTwist:
 
     def get_total_turns(self):
         return self.__total_turns
+    
+    def get_starter(self):
+        return self.__starter
+    
+    def get_win_direction(self):
+        return self.__win_direction
 
-def write_to_csv(winner, total_turns):
-    with open('minimax_vs_negamax.csv', mode='a') as file:
+def write_to_csv(game, filename, depth):
+    with open(filename, mode='a') as file:
         writer = csv.writer(file)
-        writer.writerow([winner, total_turns])
+        winner = game.get_winner()
+        total_turns = game.get_total_turns()
+        win_direction = game.get_win_direction()
+        
+
+        writer.writerow([winner, total_turns, win_direction, depth])
 
 def turn_drop_token(col, game, turn, player, board):
 
@@ -438,9 +543,59 @@ def turn_rotate_board(row, direction, game, board):
 
     return game
 
+def random_turn(game, board, turn, piece):
+        
+        valid_locations = game.get_valid_locations(board)
+        random_column = random.choice(valid_locations)
+
+        # Find occupied rows to select a random row to rotate
+        occupied_rows = game.find_occupied_rows(board)
+
+        if occupied_rows:
+            
+
+            # Choose a random rotation direction or choose not to rotate
+            rotation_direction = random.choice(["left", "right", "no direction"])
+            random_rotation_row = random.choice(occupied_rows)
+
+            # Drop the token and apply rotation
+            row = game.get_next_open_row(board, random_column)
+            board = game.drop_piece(board, row, random_column, piece)
+            game.apply_gravity(board)
+
+            print(f"RANDOM ({piece}) - Drop Column: {random_column}")
+            game.print_board(board)
+
+      
+            if rotation_direction != "no direction":
+                board = game.rotate_board(random_rotation_row, rotation_direction, board, occupied_rows)
+
+            print(f"RANDOM - {rotation_direction} Rotation Applied on Row {random_rotation_row}")
+            game.print_board(board)
+
+        else:
+            # If there are no occupied rows, just drop the token without rotation
+            row = game.get_next_open_row(board, random_column)
+            board = game.drop_piece(board, row, random_column, piece)
+            
+            game.apply_gravity(board)
+            game.print_board(board)
+
+            print(f"RANDOM - No Rotation Applied on Row")
+
+        game.increase_total_turns()
+        turn += 1
+        turn = turn % 2
+
+            
+
+        return game, board, turn
+
+
+
 def minimax_turn(game, board, turn, piece):
     
-    column, value, rotation_direction, rotation_row = game.minimax(board, 4, -math.inf, math.inf, True)
+    column, value, rotation_direction, rotation_row = game.minimax(board, DEPTH, -math.inf, math.inf, True)
 
     if (column != None):
         if game.is_valid_location(board, column):
@@ -452,10 +607,10 @@ def minimax_turn(game, board, turn, piece):
                 game.set_game_over(True)
                 game.set_winner("minimax")
 
-            print(f"MINIMAX {piece} - Before Rotation ")
+            print(f"MINIMAX {piece} - Drop Column: {column} - Value {value} ")
             game.print_board(board)
 
-            print(f"MINIMAX - {rotation_direction} Rotation Applied on Row {rotation_row}")
+            print(f"MINIMAX - {rotation_direction} Rotation Applied on Row {rotation_row} - Value {value} ")
             occupied_rows = game.find_occupied_rows(board)
             board = game.rotate_board(rotation_row, rotation_direction, board, occupied_rows)
 
@@ -473,7 +628,7 @@ def minimax_turn(game, board, turn, piece):
 
 def negamax_turn(game, board, turn, piece):
 
-    column, value, rotation_direction, rotation_row = game.negamax(board, 4, -math.inf, math.inf, 1)
+    column, value, rotation_direction, rotation_row = game.negamax(board, DEPTH, -math.inf, math.inf, 1)
 
     if (column != None):
         if game.is_valid_location(board, column):
@@ -484,10 +639,11 @@ def negamax_turn(game, board, turn, piece):
                 game.set_game_over(True)
                 game.set_winner("negamax")
 
-            print(f"NEGAMAX {piece} - Before Rotation ")
+            print(f"NEGAMAX ({piece}) - Drop Column: {column} - Value {value} ")
             game.print_board(board)
 
-            print(f"NEGAMAX - {rotation_direction} Rotation Applied on Row {rotation_row}")
+            print(f"NEGAMAX ({piece}) - {rotation_direction} Rotation Applied on Row {rotation_row} - Value {value} ")
+            
             occupied_rows = game.find_occupied_rows(board)
             board = game.rotate_board(rotation_row, rotation_direction, board, occupied_rows)
 
@@ -523,8 +679,10 @@ def player_turn(game, board, turn):
     
 def play_against_minimax():
     game = ConnectFourTwist()
-    turn = random.randint(PLAYER, AI)
+    turn = random.randint(OPP_MINIMAX, MINIMAX)
     board = game.get_board()
+
+    print("here")
 
     while not game.get_game_over():
 
@@ -543,17 +701,17 @@ def play_against_minimax():
 
 def play_against_negamax():
     game = ConnectFourTwist()
-    turn = random.randint(PLAYER, AI)
+    turn = random.randint(NEGAMAX, OPP_NEGAMAX)
     board = game.get_board()
 
     while not game.get_game_over():
 
         # Ask for Player 1 Input
-        if turn == PLAYER:
+        if turn == OPP_NEGAMAX and not game.get_game_over():
             game, board = player_turn(game, board)
             
         # Ask for Player 2 Input
-        if turn == AI and not game.get_game_over():				
+        if turn == NEGAMAX and not game.get_game_over():				
             game, board = negamax_turn(game, board)
             
         print(game.get_game_over())
@@ -564,18 +722,19 @@ def play_against_negamax():
 winning_board = []
 
 def play_minimax_vs_negamax():
-    MINIMAX = 1
-    NEGAMAX = 2
+    
 
-    turn = random.randint(MINIMAX, NEGAMAX)
+    turn = random.randint(0, 1)
     game = ConnectFourTwist(turn)
     
     board = game.get_board()
 
+    print("HERE 1")
+
     while not game.get_game_over():
+        print(f"HERE 2 turn = {turn}")
 
 
-        # Ask for Player 1 Input
         if turn == 0 and not game.get_game_over():
             game, board, turn = minimax_turn(game, board, turn, MINIMAX)
 
@@ -591,11 +750,10 @@ def play_minimax_vs_negamax():
         if game.get_game_over():
             print("GAME OVER")
             print(f"Winner is {game.get_winner()}")
-            write_to_csv(game.get_winner(), game.get_total_turns())
+            write_to_csv(game, "minimax_vs_negamax.csv", DEPTH)
             winning_board.append(board)
             #exit()
             
-        # Ask for Player 2 Input
         if turn == 1 and not game.get_game_over():				
             game, board, turn = negamax_turn(game, board, turn, NEGAMAX)
 
@@ -611,29 +769,87 @@ def play_minimax_vs_negamax():
         if game.get_game_over():
             print("GAME OVER")
             print(f"Winner is {game.get_winner()}")
-            write_to_csv(game.get_winner(), game.get_total_turns())
+            write_to_csv(game, "minimax_vs_negamax.csv", DEPTH)
             winning_board.append(board)
             #exit()
             
             #play_minimax_vs_negamax()
-            
+
+def check_for_win(game, board, piece1, piece2, name1, name2):
+
+    filename = f"{name1}_vs_{name2}.csv"
+
+    if game.winning_move(board, piece1):
+        game.set_game_over(True)
+        game.set_winner(name1)
+
+    if game.winning_move(board, piece2):
+        game.set_game_over(True)
+        game.set_winner(name2)
+
+    if game.get_game_over():
+        print("GAME OVER")
+        print(f"Winner is {game.get_winner()}")
+        write_to_csv(game,  filename, DEPTH)
+        winning_board.append(board)
+
+        return True
+    
+    return False
         
 
+def play_minimax_vs_random():
+    turn = random.randint(0, 1)
+    game = ConnectFourTwist(turn)
+    board = game.get_board()
+
+    while not game.get_game_over():
+
+        if turn == 0 and not game.get_game_over():
+            game, board, turn = minimax_turn(game, board, turn, MINIMAX)
+
+        if check_for_win(game, board, MINIMAX, OPP_MINIMAX, "minimax", "random"):
+            break
+       
+        if turn == 1 and not game.get_game_over(): 
+            game, board, turn  = random_turn(game, board, turn, OPP_MINIMAX)
+
+        if check_for_win(game, board, MINIMAX, OPP_MINIMAX, "minimax", "random"):
+            break
+
+def play_negamax_vs_random():
+    turn = random.randint(0, 1)
+    game = ConnectFourTwist(turn)
+    board = game.get_board()
+
+    while not game.get_game_over():
+
+        if turn == 0 and not game.get_game_over():
+            game, board, turn = negamax_turn(game, board, turn, NEGAMAX)
+
+        if check_for_win(game, board, NEGAMAX, OPP_NEGAMAX, "negamax", "random"):
+            break
+       
+        if turn == 1 and not game.get_game_over():
+            game, board, turn  = random_turn(game, board, turn, OPP_NEGAMAX)
+
+        if check_for_win(game, board, NEGAMAX, OPP_NEGAMAX, "negamax", "random"):
+            break
+     
+        
 #play_minimax_vs_negamax()
 
-#play_against_minimax()
-#play_against_negamax()
+#for _ in range(10):
+#    play_minimax_vs_random()
 
-#for i in range(0, 10):
-#    play_minimax_vs_negamax()
-play_minimax_vs_negamax()
-play_minimax_vs_negamax()
-play_minimax_vs_negamax()
-play_minimax_vs_negamax()
+for _ in range(10):
+    play_negamax_vs_random()
 
-print(winning_board)
+#print(winning_board)
 
-for board in winning_board:
-    print("=========")
-    for row in board:
-        print(row)
+#for board in winning_board:
+#    print("=========")
+#    for row in board:
+#        print(row)
+
+#test_circular_horizontal()

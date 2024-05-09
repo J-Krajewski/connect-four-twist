@@ -1,0 +1,27 @@
+winner, total_number_of_turns, win_direction, depth
+
+minimax,14,lrd,5
+
+minimax,11,vertical,5
+
+minimax,13,vertical,5
+minimax,16,vertical,5
+minimax,16,lru,5
+minimax,13,vertical,5
+random,11,horizontal,5
+random,9,horizontal,5
+minimax,10,horizontal,5
+minimax,11,horizontal,5
+minimax,9,horizontal,5
+random,15,horizontal,5
+minimax,15,vertical,5
+minimax,12,horizontal,5
+minimax,17,vertical,5
+minimax,17,lrd,5
+minimax,17,horizontal,5
+minimax,16,vertical,5
+minimax,16,vertical,5
+random,12,horizontal,5
+random,21,lrd,5
+minimax,20,vertical,5
+random mover,15,vertical,5

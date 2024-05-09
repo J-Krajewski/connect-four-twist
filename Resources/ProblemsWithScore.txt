@@ -1,0 +1,67 @@
+MINIMAX 2 - Before Rotation 
+======
+000000
+000000
+102000
+212121
+121221
+======
+MINIMAX - left Rotation Applied on Row 0
+======
+000000
+000000
+102000
+212121
+212211
+======
+NEGAMAX 1 - Before Rotation 
+======
+000000
+100000
+102000
+212121
+212211
+======
+NEGAMAX - left Rotation Applied on Row 0
+======
+000000
+100000
+102000
+212121
+122112
+======
+HERE 2 turn = 0
+MINIMAX 2 - Before Rotation 
+======
+200000
+100000
+102000
+212121
+122112
+======
+MINIMAX - left Rotation Applied on Row 0
+======
+200000
+100000
+102000
+212121
+221121
+======
+NEGAMAX 1 - Before Rotation 
+======
+200000
+100000
+112000
+212121
+221121
+======
+NEGAMAX - left Rotation Applied on Row 1
+======
+200000
+100000
+112000
+121212
+221121
+======
+GAME OVER
+Winner is negamax
