@@ -2,7 +2,7 @@ import numpy as np
 import random
 from colorama import Fore, Style
 import csv
-
+import time
 
 import sys
 import math
@@ -29,7 +29,7 @@ OPP_NEGAMAX = 2
 
 WINDOW_LENGTH = 4
 
-DEPTH = 3
+DEPTH = 4
 
 
 class ConnectFourTwist:
@@ -40,12 +40,14 @@ class ConnectFourTwist:
         self.__board = self.init_board()
         self.__game_over = False
         self.__transposition_table = {}
+        self.__turn_times = []
 
         # Winning Stats Collected 
         self.__winner = None
         self.__total_turns = 0
         self.__starter = starter
         self.__win_direction = None
+        
 
     def init_board(self):
         board = np.zeros((ROWS,COLUMNS), dtype=int)
@@ -214,7 +216,7 @@ class ConnectFourTwist:
     
     def evaluate_board(self, board, piece):
         score = 0
-        score_value = 300
+        score_value = 3
 
         if piece == 1:
             opp_piece = 2
@@ -314,15 +316,6 @@ class ConnectFourTwist:
         p2_winning_move = self.winning_move(board, 2)
         no_more_moves = (len(self.get_valid_locations(board)) == 0)
 
-        if p1_winning_move:
-            print(f"P1 winning move - {p1_winning_move}")
-
-        if p2_winning_move:
-            print(f"P2 winning move - {p2_winning_move}")
-
-        if no_more_moves:
-            print("No More Moves")
-
         return  p1_winning_move or p2_winning_move or no_more_moves
 
     def minimax(self, board, depth, alpha, beta, maximizingPlayer, node_count=0):
@@ -385,7 +378,7 @@ class ConnectFourTwist:
 
                         new_score = self.minimax(rotated_board, depth-1, alpha, beta, False, node_count=node_count)[1]
                         if new_score > value:
-                            print(f"maximising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
+                            #print(f"maximising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
                             value = new_score
                             column = drop_col
                             direction = rotation_direction
@@ -424,7 +417,7 @@ class ConnectFourTwist:
 
                         new_score = self.minimax(rotated_board, depth-1, alpha, beta, True, node_count=node_count)[1]
                         if new_score < value:
-                            print(f"minimising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
+                            #print(f"minimising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
                             value = new_score
                             column = drop_col
                             direction = rotation_direction
@@ -468,24 +461,25 @@ class ConnectFourTwist:
         column = random.choice(valid_locations)
         rotation_direction = None
         rotation_row = None
-        for col in valid_locations:
-            for direction in ["left", "right", "no direction"]:
-                for row in occupied_rows:
+        for drop_col in valid_locations:
+            for rotation_direction in ["left", "right", "no direction"]:
+                for rotation_row in occupied_rows:
                     b_copy = board.copy()
-                    b_copy = self.drop_piece(b_copy, row, col, color)
+                    drop_row = self.get_next_open_row(b_copy, drop_col)
+                    b_copy = self.drop_piece(b_copy, drop_row, drop_col, color)
                     
-                    if direction != "no direction":
+                    if rotation_direction != "no direction":
                         # Rotate the board
-                        rotated_board = self.rotate_board(row, direction, b_copy, occupied_rows)
+                        rotated_board = self.rotate_board(drop_row, rotation_direction, b_copy, occupied_rows)
                     else:
                         rotated_board = b_copy
 
                     new_score = -self.negamax(rotated_board, depth-1, -beta, -alpha, -color)[1]
                     if new_score > value:
                         value = new_score
-                        column = col
-                        rotation_direction = direction
-                        rotation_row = row
+                        column = drop_col
+                        rotation_direction = rotation_direction
+                        rotation_row = rotation_row
                     alpha = max(alpha, value)
                     if alpha >= beta:
                         break
@@ -507,7 +501,16 @@ class ConnectFourTwist:
                 valid_locations.append(col)
         return valid_locations
     
+    def calculate_average_turn_time(self):
+        if not self.__turn_times:
+            return 0
+        
+        total_time = sum(self.__turn_times)
+        average_time = total_time / len(self.__turn_times)
+        return average_time
     
+    def add_turn_time(self, time):
+        self.__turn_times.append(time)
     
     def get_game_over(self):
         return self.__game_over
@@ -535,16 +538,21 @@ class ConnectFourTwist:
     
     def get_win_direction(self):
         return self.__win_direction
+    
+    def get_turn_times(self):
+        return self.__turn_times
 
-def write_to_csv(game, filename, depth):
+def write_to_csv(game, filename):
     with open(filename, mode='a') as file:
         writer = csv.writer(file)
         winner = game.get_winner()
         total_turns = game.get_total_turns()
         win_direction = game.get_win_direction()
-        
+        average_turn_time = game.calculate_average_turn_time()
+        depth = DEPTH
+        print(game.get_turn_times())
 
-        writer.writerow([winner, total_turns, win_direction, depth])
+        writer.writerow([winner, total_turns, win_direction, depth, average_turn_time])
 
 def turn_drop_token(col, game, turn, player, board):
 
@@ -612,6 +620,9 @@ def random_turn(game, board, turn, piece):
             
 
         return game, board, turn
+
+
+    
 
 
 
@@ -814,14 +825,13 @@ def check_for_win(game, board, piece1, piece2, name1, name2):
     if game.get_game_over():
         print("GAME OVER")
         print(f"Winner is {game.get_winner()}")
-        write_to_csv(game,  filename, DEPTH)
+        write_to_csv(game, filename)
         winning_board.append(board)
 
         return True
     
     return False
         
-
 def play_minimax_vs_random():
     turn = random.randint(0, 1)
     game = ConnectFourTwist(turn)
@@ -830,7 +840,11 @@ def play_minimax_vs_random():
     while not game.get_game_over():
 
         if turn == 0 and not game.get_game_over():
+            start_time = time.time()
             game, board, turn = minimax_turn(game, board, turn, MINIMAX)
+            end_time = time.time()
+
+            game.add_turn_time(end_time - start_time)
 
         if check_for_win(game, board, MINIMAX, OPP_MINIMAX, "minimax", "random"):
             break
@@ -849,7 +863,11 @@ def play_negamax_vs_random():
     while not game.get_game_over():
 
         if turn == 0 and not game.get_game_over():
+            start_time = time.time()
             game, board, turn = negamax_turn(game, board, turn, NEGAMAX)
+            end_time = time.time()
+
+            game.add_turn_time(end_time - start_time)
 
         if check_for_win(game, board, NEGAMAX, OPP_NEGAMAX, "negamax", "random"):
             break
@@ -863,13 +881,13 @@ def play_negamax_vs_random():
         
 #play_minimax_vs_negamax()
 
-#for _ in range(15):
-play_minimax_vs_random()
+for _ in range(15):
+    play_minimax_vs_random()
 
 #play_minimax_vs_random()
 
-#for _ in range(15):
-#play_negamax_vs_random()
+for _ in range(15):
+    play_negamax_vs_random()
 
 #print(winning_board)
 
