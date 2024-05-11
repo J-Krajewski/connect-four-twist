@@ -195,12 +195,21 @@ class ConnectFourTwist:
             score -= 100
             score = score * multiplier
 
-        elif window.count(piece) == 3 and window.count(EMPTY) == 1:
-            score += 5
+        if window.count(piece) == 3 and window.count(EMPTY) == 1:
+            score += 50
+            score = score * multiplier
+
+        if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
+            score -= 50
             score = score * multiplier
             
-        elif window.count(piece) == 2 and window.count(EMPTY) == 2:
+        if window.count(piece) == 2 and window.count(EMPTY) == 2:
             score += 2
+            score = score * multiplier
+
+        if window.count(opp_piece) == 2 and window.count(EMPTY) == 2:
+            score -= 2
+            score = score * multiplier
 
         # Ways you can lose in one move 
 
@@ -401,6 +410,7 @@ class ConnectFourTwist:
             column = random.choice(valid_locations)
             rotation_direction = None
             rotation_row = None
+
             for drop_col in valid_locations:
                 for rotation_direction in ["left", "right", "no direction"]:
                     for rotation_row in occupied_rows:
@@ -427,7 +437,7 @@ class ConnectFourTwist:
                             break
             return column, value, direction, row, node_count
         
-    def negamax(self, board, depth, alpha, beta, color):
+    def negamax_old(self, board, depth, alpha, beta, color):
         valid_locations = self.get_valid_locations(board)
         occupied_rows = self.find_occupied_rows(board)
         is_terminal = self.is_terminal_node(board)
@@ -459,8 +469,9 @@ class ConnectFourTwist:
             
         value = -math.inf
         column = random.choice(valid_locations)
-        rotation_direction = None
-        rotation_row = None
+        direction = None
+        row = None
+
         for drop_col in valid_locations:
             for rotation_direction in ["left", "right", "no direction"]:
                 for rotation_row in occupied_rows:
@@ -471,15 +482,18 @@ class ConnectFourTwist:
                     if rotation_direction != "no direction":
                         # Rotate the board
                         rotated_board = self.rotate_board(drop_row, rotation_direction, b_copy, occupied_rows)
+                        
                     else:
                         rotated_board = b_copy
 
                     new_score = -self.negamax(rotated_board, depth-1, -beta, -alpha, -color)[1]
+                    #print(f"new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
                     if new_score > value:
+                        print(f"new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
                         value = new_score
                         column = drop_col
-                        rotation_direction = rotation_direction
-                        rotation_row = rotation_row
+                        direction = rotation_direction
+                        row = rotation_row
                     alpha = max(alpha, value)
                     if alpha >= beta:
                         break
@@ -491,9 +505,76 @@ class ConnectFourTwist:
             'type': 'exact' if value >= beta else ('lowerbound' if value > alpha else 'upperbound')
         }
 
-        return column, value, rotation_direction, rotation_row
+        return column, value, direction, row
+    
+    def negamax(self, board, depth, alpha, beta, sign):
+        valid_locations = self.get_valid_locations(board)
+        occupied_rows = self.find_occupied_rows(board)
+        is_terminal = self.is_terminal_node(board)
 
+        # Checking if board state is in the transposition table
+        key = str(board)
+        if key in self.__transposition_table:
+            entry = self.__transposition_table[key]
+            if entry['depth'] >= depth:
+                if entry['type'] == 'exact':
+                    return None, entry['score'], None, None
+                elif entry['type'] == 'lowerbound':
+                    alpha = max(alpha, entry['score'])
+                elif entry['type'] == 'upperbound':
+                    beta = min(beta, entry['score'])
+                if alpha >= beta:
+                    return None, entry['score'], None, None
+                
+        if depth == 0 or is_terminal:
+            if is_terminal:
+                if self.winning_move(board, sign):
+                    return None, 100000000000000, None, None
+                elif self.winning_move(board, 3 - sign):  # opponent's sign
+                    return None, -10000000000000, None, None
+                else:  # Game is over, no more valid moves
+                    return None, 0, None, None
+            else:  # Depth is zero
+                return None, self.score_position(board, sign), None, None
+                    
+        value = -math.inf
+        column = random.choice(valid_locations)
+        direction = None
+        row = None
 
+        for drop_col in valid_locations:
+            for rotation_direction in ["left", "right", "no direction"]:
+                for rotation_row in occupied_rows:
+                    b_copy = board.copy()
+                    drop_row = self.get_next_open_row(b_copy, drop_col)
+                    b_copy = self.drop_piece(b_copy, drop_row, drop_col, sign)
+                    
+                    if rotation_direction != "no direction":
+                        # Rotate the board
+                        rotated_board = self.rotate_board(rotation_row, rotation_direction, b_copy, occupied_rows)
+                    else:
+                        rotated_board = b_copy
+
+                    new_score = -self.negamax(rotated_board, depth-1, -beta, -alpha, 3 - sign)[1]  # Switch sign
+                    if new_score > value:
+                        value = new_score
+                        column = drop_col
+                        direction = rotation_direction
+                        row = rotation_row
+                    alpha = max(alpha, value)
+                    if alpha >= beta:
+                        break
+
+        # Adding the state to the transposition table 
+        self.__transposition_table[key] = {
+            'depth': depth,
+            'score': value,
+            'type': 'exact' if value >= beta else ('lowerbound' if value > alpha else 'upperbound')
+        }
+
+        return column, value, direction, row
+        
+ 
     def get_valid_locations(self, board):
         valid_locations = []
         for col in range(COLUMNS):
@@ -615,16 +696,9 @@ def random_turn(game, board, turn, piece):
 
         game.increase_total_turns()
         turn += 1
-        turn = turn % 2
-
-            
+        turn = turn % 2   
 
         return game, board, turn
-
-
-    
-
-
 
 def minimax_turn(game, board, turn, piece):
     
@@ -664,6 +738,10 @@ def minimax_turn(game, board, turn, piece):
 def negamax_turn(game, board, turn, piece):
 
     column, value, rotation_direction, rotation_row = game.negamax(board, DEPTH, -math.inf, math.inf, NEGAMAX)
+
+    #best_column, value, best_direction, best_row, node_count
+    print(f"drop_column = {column} rotation_row = {rotation_row} rotation_direction = {rotation_direction} value = {value}")
+
 
     if (column != None):
         if game.is_valid_location(board, column):
@@ -881,8 +959,8 @@ def play_negamax_vs_random():
         
 #play_minimax_vs_negamax()
 
-for _ in range(15):
-    play_minimax_vs_random()
+#for _ in range(15):
+#    play_minimax_vs_random()
 
 #play_minimax_vs_random()
 
