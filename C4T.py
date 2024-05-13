@@ -41,12 +41,16 @@ class ConnectFourTwist:
         self.__game_over = False
         self.__transposition_table = {}
         self.__turn_times = []
+        self.__current_node_count = 0
+        self.__turn_nodes = []
+        
 
         # Winning Stats Collected 
         self.__winner = None
         self.__total_turns = 0
         self.__starter = starter
         self.__win_direction = None
+        
         
 
     def init_board(self):
@@ -333,12 +337,9 @@ class ConnectFourTwist:
         is_terminal = self.is_terminal_node(board)
 
         #print(node_count)
-        node_count += 1
+        
 
-        #if piece == 1:
-        #    opp_piece = 2
-        #elif piece == 2:
-        #    opp_piece = 1
+        
 
         # Checking if board state is in the transposition table
         key = str(board)
@@ -353,6 +354,8 @@ class ConnectFourTwist:
                     beta = min(beta, entry['score'])
                 if alpha >= beta:
                     return None, entry['score']
+                
+        self.__current_node_count += 1
             
         if depth == 0 or is_terminal:
             if is_terminal:
@@ -526,6 +529,8 @@ class ConnectFourTwist:
                 if alpha >= beta:
                     return None, entry['score'], None, None
                 
+        self.__current_node_count += 1
+                
         if depth == 0 or is_terminal:
             if is_terminal:
                 if self.winning_move(board, sign):
@@ -582,16 +587,19 @@ class ConnectFourTwist:
                 valid_locations.append(col)
         return valid_locations
     
-    def calculate_average_turn_time(self):
-        if not self.__turn_times:
+    def calculate_average_turn_value(self, turn_array):
+        if not turn_array:
             return 0
         
-        total_time = sum(self.__turn_times)
-        average_time = total_time / len(self.__turn_times)
-        return average_time
+        total_value = sum(turn_array)
+        average_value = total_value / len(turn_array)
+        return average_value
     
     def add_turn_time(self, time):
         self.__turn_times.append(time)
+
+    def add_turn_nodes(self, node_count):
+        self.__turn_nodes.append(node_count)
     
     def get_game_over(self):
         return self.__game_over
@@ -622,6 +630,17 @@ class ConnectFourTwist:
     
     def get_turn_times(self):
         return self.__turn_times
+    
+    def get_turn_nodes(self):
+        return self.__turn_nodes
+    
+    def get_current_node_count(self):
+        return self.__current_node_count
+
+    def set_current_node_count(self, new_value):
+        self.__current_node_count = new_value
+    
+    
 
 def write_to_csv(game, filename):
     with open(filename, mode='a') as file:
@@ -629,11 +648,16 @@ def write_to_csv(game, filename):
         winner = game.get_winner()
         total_turns = game.get_total_turns()
         win_direction = game.get_win_direction()
-        average_turn_time = game.calculate_average_turn_time()
-        depth = DEPTH
-        print(game.get_turn_times())
 
-        writer.writerow([winner, total_turns, win_direction, depth, average_turn_time])
+        turn_times = game.get_turn_times()
+        turn_nodes = game.get_turn_nodes()
+        average_turn_time = game.calculate_average_turn_value(turn_times)
+        average_turn_nodes = game.calculate_average_turn_value(turn_nodes)
+
+        depth = DEPTH
+        starter = game.get_starter()
+        
+        writer.writerow([winner, starter, total_turns, win_direction, depth, turn_times, average_turn_time, turn_nodes, average_turn_nodes])
 
 def turn_drop_token(col, game, turn, player, board):
 
@@ -918,10 +942,12 @@ def play_minimax_vs_random():
     while not game.get_game_over():
 
         if turn == 0 and not game.get_game_over():
+            game.set_current_node_count(0)
             start_time = time.time()
             game, board, turn = minimax_turn(game, board, turn, MINIMAX)
             end_time = time.time()
 
+            game.add_turn_nodes(game.get_current_node_count())
             game.add_turn_time(end_time - start_time)
 
         if check_for_win(game, board, MINIMAX, OPP_MINIMAX, "minimax", "random"):
@@ -935,16 +961,27 @@ def play_minimax_vs_random():
 
 def play_negamax_vs_random():
     turn = random.randint(0, 1)
-    game = ConnectFourTwist(turn)
+
+    turn_piece_dict = {
+        0: [NEGAMAX, "negamax"],
+        1: [OPP_NEGAMAX, "random"]
+    }
+
+    starter = turn_piece_dict[turn][1]
+    print(starter)
+
+    game = ConnectFourTwist(starter)
     board = game.get_board()
 
     while not game.get_game_over():
 
         if turn == 0 and not game.get_game_over():
+            game.set_current_node_count(0)
             start_time = time.time()
             game, board, turn = negamax_turn(game, board, turn, NEGAMAX)
             end_time = time.time()
-
+            
+            game.add_turn_nodes(game.get_current_node_count())
             game.add_turn_time(end_time - start_time)
 
         if check_for_win(game, board, NEGAMAX, OPP_NEGAMAX, "negamax", "random"):
@@ -955,17 +992,47 @@ def play_negamax_vs_random():
 
         if check_for_win(game, board, NEGAMAX, OPP_NEGAMAX, "negamax", "random"):
             break
+
+def play_random_vs_random():
+    turn = random.randint(0, 1)
+
+    turn_piece_dict = {
+        0: [1, "random_1"],
+        1: [2, "random_2"]
+    }
+
+    starter = turn_piece_dict[turn][1]
+    print(starter)
+
+    game = ConnectFourTwist(starter)
+    board = game.get_board()
+
+    while not game.get_game_over():
+
+        if turn == 0 and not game.get_game_over():
+            game, board, turn  = random_turn(game, board, turn, 1)
+
+        if check_for_win(game, board, 1, 2, "random_1", "random_2"):
+            break
+       
+        if turn == 1 and not game.get_game_over():
+            game, board, turn  = random_turn(game, board, turn, OPP_NEGAMAX)
+
+        if check_for_win(game, board, 1, 2, "random_1", "random_2"):
+            break
      
         
 #play_minimax_vs_negamax()
 
 #for _ in range(15):
-#    play_minimax_vs_random()
+#play_minimax_vs_random()
 
 #play_minimax_vs_random()
 
-for _ in range(15):
-    play_negamax_vs_random()
+#for _ in range(15):
+#play_negamax_vs_random()
+for _ in range(50):
+    play_random_vs_random()
 
 #print(winning_board)
 
