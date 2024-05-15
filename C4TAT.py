@@ -29,26 +29,25 @@ OPP_NEGAMAX = 2
 
 WINDOW_LENGTH = 4
 
-DEPTH = 4
+MAX_DEPTH = 4
 
-
-class ConnectFourTwist:
+class ConnectFourTwistAndTurn:
 	
-    def __init__(self, starter):
-        self.__player1 = Player(colour="red", number=1, name="Player")
-        self.__player2 = Player(colour="yellow", number=2, name="AI")
+    def __init__(self, player1, player2, depth):
+        self.__player1 = player1
+        self.__player2 = player2
+        self.__players = {1: self.__player1, 2: self.__player2}
+        
         self.__board = self.init_board()
         self.__game_over = False
         self.__transposition_table = {}
-        self.__turn_times = []
+        self.__depth = depth
         self.__current_node_count = 0
-        self.__turn_nodes = []
         
-
         # Winning Stats Collected 
         self.__winner = None
         self.__total_turns = 0
-        self.__starter = starter
+        self.__starter = None
         self.__win_direction = None
         
         
@@ -331,15 +330,12 @@ class ConnectFourTwist:
 
         return  p1_winning_move or p2_winning_move or no_more_moves
 
-    def minimax(self, board, depth, alpha, beta, maximizingPlayer, node_count=0):
+    def minimax(self, board, depth, alpha, beta, maximizingPlayer, minimax_number, opp_number):
         valid_locations = self.get_valid_locations(board)
         occupied_rows = self.find_occupied_rows(board)
         is_terminal = self.is_terminal_node(board)
 
         #print(node_count)
-        
-
-        
 
         # Checking if board state is in the transposition table
         key = str(board)
@@ -359,14 +355,14 @@ class ConnectFourTwist:
             
         if depth == 0 or is_terminal:
             if is_terminal:
-                if self.winning_move(board, MINIMAX):
+                if self.winning_move(board, minimax_number):
                     return (None, 100000000000000)
-                elif self.winning_move(board, OPP_MINIMAX):
+                elif self.winning_move(board, opp_number):
                     return (None, -10000000000000)
                 else: # Game is over, no more valid moves
                     return (None, 0)
             else: # Depth is zero
-                return (None, self.score_position(board, MINIMAX))
+                return (None, self.score_position(board, minimax_number))
             
         if maximizingPlayer:
             value = -math.inf
@@ -380,7 +376,7 @@ class ConnectFourTwist:
                         b_copy = board.copy()
                         drop_row = self.get_next_open_row(b_copy, drop_col)
 
-                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, MINIMAX)
+                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, minimax_number)
                         
                         if rotation_direction != "no direction":
                             # Rotate the board
@@ -388,7 +384,7 @@ class ConnectFourTwist:
                         else:
                             rotated_board = b_copy
 
-                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, False, node_count=node_count)[1]
+                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, False, minimax_number, opp_number)[1]
                         if new_score > value:
                             #print(f"maximising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
                             value = new_score
@@ -406,7 +402,7 @@ class ConnectFourTwist:
                 'type': 'exact' if value >= beta else ('lowerbound' if value > alpha else 'upperbound')
             }
 
-            return column, value, direction, row, node_count
+            return column, value, direction, row
 
         else: # Minimizing player
             value = math.inf
@@ -420,7 +416,7 @@ class ConnectFourTwist:
                         b_copy = board.copy()
                         drop_row = self.get_next_open_row(b_copy, drop_col)
 
-                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, OPP_MINIMAX)
+                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, opp_number)
                         
                         if rotation_direction != "no direction":
                             # Rotate the board
@@ -428,7 +424,7 @@ class ConnectFourTwist:
                         else:
                             rotated_board = b_copy
 
-                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, True, node_count=node_count)[1]
+                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, True, minimax_number, opp_number)[1]
                         if new_score < value:
                             #print(f"minimising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
                             value = new_score
@@ -438,78 +434,8 @@ class ConnectFourTwist:
                         beta = min(beta, value)
                         if alpha >= beta:
                             break
-            return column, value, direction, row, node_count
+            return column, value, direction, row
         
-    def negamax_old(self, board, depth, alpha, beta, color):
-        valid_locations = self.get_valid_locations(board)
-        occupied_rows = self.find_occupied_rows(board)
-        is_terminal = self.is_terminal_node(board)
-
-        # Checking if board state is in the transposition table
-        key = str(board)
-        if key in self.__transposition_table:
-            entry = self.__transposition_table[key]
-            if entry['depth'] >= depth:
-                if entry['type'] == 'exact':
-                    return None, entry['score']
-                elif entry['type'] == 'lowerbound':
-                    alpha = max(alpha, entry['score'])
-                elif entry['type'] == 'upperbound':
-                    beta = min(beta, entry['score'])
-                if alpha >= beta:
-                    return None, entry['score']
-            
-        if depth == 0 or is_terminal:
-            if is_terminal:
-                if self.winning_move(board, NEGAMAX):
-                    return (None, 100000000000000 * color)
-                elif self.winning_move(board, OPP_NEGAMAX):
-                    return (None, -10000000000000 * color)
-                else: # Game is over, no more valid moves
-                    return (None, 0)
-            else: # Depth is zero
-                return (None, color * self.score_position(board, NEGAMAX))
-            
-        value = -math.inf
-        column = random.choice(valid_locations)
-        direction = None
-        row = None
-
-        for drop_col in valid_locations:
-            for rotation_direction in ["left", "right", "no direction"]:
-                for rotation_row in occupied_rows:
-                    b_copy = board.copy()
-                    drop_row = self.get_next_open_row(b_copy, drop_col)
-                    b_copy = self.drop_piece(b_copy, drop_row, drop_col, color)
-                    
-                    if rotation_direction != "no direction":
-                        # Rotate the board
-                        rotated_board = self.rotate_board(drop_row, rotation_direction, b_copy, occupied_rows)
-                        
-                    else:
-                        rotated_board = b_copy
-
-                    new_score = -self.negamax(rotated_board, depth-1, -beta, -alpha, -color)[1]
-                    #print(f"new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
-                    if new_score > value:
-                        print(f"new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
-                        value = new_score
-                        column = drop_col
-                        direction = rotation_direction
-                        row = rotation_row
-                    alpha = max(alpha, value)
-                    if alpha >= beta:
-                        break
-
-        # Adding the state to the transposition table 
-        self.__transposition_table[key] = {
-            'depth': depth,
-            'score': value,
-            'type': 'exact' if value >= beta else ('lowerbound' if value > alpha else 'upperbound')
-        }
-
-        return column, value, direction, row
-    
     def negamax(self, board, depth, alpha, beta, sign):
         valid_locations = self.get_valid_locations(board)
         occupied_rows = self.find_occupied_rows(board)
@@ -578,7 +504,6 @@ class ConnectFourTwist:
         }
 
         return column, value, direction, row
-        
  
     def get_valid_locations(self, board):
         valid_locations = []
@@ -587,19 +512,41 @@ class ConnectFourTwist:
                 valid_locations.append(col)
         return valid_locations
     
-    def calculate_average_turn_value(self, turn_array):
-        if not turn_array:
-            return 0
-        
-        total_value = sum(turn_array)
-        average_value = total_value / len(turn_array)
-        return average_value
-    
-    def add_turn_time(self, time):
-        self.__turn_times.append(time)
+    def check_winning_move(self, player, board):
+        # Check if the given player has a connect 4 
+        if self.winning_move(board, player.get_number()):
+            # If no other winner has been declared, set winner
+            if self.__winner == None:
+                self.__game_over = True
+                self.__winner = (player.get_name())
 
-    def add_turn_nodes(self, node_count):
-        self.__turn_nodes.append(node_count)
+    def check_for_win(self, board):
+
+        # Check both players for a potential win or draw
+        self.check_winning_move(self.__player1, board)
+        self.check_winning_move(self.__player2, board)
+
+        if self.get_game_over():
+            print("GAME OVER")
+            print(f"Winner is {self.get_winner()}")
+            self.write_to_csv()
+            winning_board.append(board)
+
+            return True
+        
+        return False
+    
+    def write_to_csv(self):
+        filename = f"{self.__player1.get_name()}_vs_{self.__player2.get_name()}.csv"
+
+        with open(filename, mode='a') as file:
+            writer = csv.writer(file)
+        
+            row = [self.__winner, self.__starter.get_name(), self.__total_turns, self.__win_direction, self.__depth]
+            row = self.__player1.add_player_info(row)
+            row = self.__player2.add_player_info(row)
+            
+            writer.writerow(row)
     
     def get_game_over(self):
         return self.__game_over
@@ -628,37 +575,29 @@ class ConnectFourTwist:
     def get_win_direction(self):
         return self.__win_direction
     
-    def get_turn_times(self):
-        return self.__turn_times
-    
-    def get_turn_nodes(self):
-        return self.__turn_nodes
+    def get_players(self):
+        return self.__players
     
     def get_current_node_count(self):
         return self.__current_node_count
-
-    def set_current_node_count(self, new_value):
-        self.__current_node_count = new_value
     
+    def set_current_node_count(self, current_node_count):
+        self.__current_node_count = current_node_count
     
+    def update_players(self, player1, player2):
+        self.__player1 = player1
+        self.__player2 = player2
+        self.__players = {1: self.__player1, 2: self.__player2}
 
-def write_to_csv(game, filename):
-    with open(filename, mode='a') as file:
-        writer = csv.writer(file)
-        winner = game.get_winner()
-        total_turns = game.get_total_turns()
-        win_direction = game.get_win_direction()
+    def set_starter(self, starter):
+        self.__starter = starter
 
-        turn_times = game.get_turn_times()
-        turn_nodes = game.get_turn_nodes()
-        average_turn_time = game.calculate_average_turn_value(turn_times)
-        average_turn_nodes = game.calculate_average_turn_value(turn_nodes)
-
-        depth = DEPTH
-        starter = game.get_starter()
-        
-        writer.writerow([winner, starter, total_turns, win_direction, depth, turn_times, average_turn_time, turn_nodes, average_turn_nodes])
-
+    def set_player1(self, player1):
+        self.__player1 = player1
+    
+    def set_player1(self, player2):
+        self.__player2 = player2
+    
 def turn_drop_token(col, game, turn, player, board):
 
     row = game.get_next_open_row(board, col)
@@ -678,7 +617,44 @@ def turn_rotate_board(row, direction, game, board):
 
     return game
 
-def random_turn(game, board, turn, piece):
+def player_turn(game, board, turn, depth, player_number, opp_number):
+
+    # Get the Drop Column
+    valid_locations = game.get_valid_locations(board)
+    drop_col = int(input("Enter Drop Column"))
+
+    if drop_col not in valid_locations:
+        print(f"Column {drop_col} is Not a Valid Location")
+        player_turn(game, board, turn, depth, player_number, opp_number)
+    
+    # Drop the token and apply rotation
+    row = game.get_next_open_row(board, drop_col)
+    board = game.drop_piece(board, row, drop_col, player_number)
+    game.apply_gravity(board)
+
+    print(f">>> PLAYER ({player_number}) - Drop Column: {drop_col}")
+    game.print_board(board)
+
+    # Get the Rotation Row
+    occupied_rows = game.find_occupied_rows(board)
+    rotation_row = int(input("Enter Rotation Row"))
+
+    if rotation_row not in occupied_rows:
+        print(f"Row {rotation_row} is Not a Valid Location, no rotation applied")
+
+    # Get the Rotation Direction
+    rotation_direction = str(input("Enter Rotation Direction (left/right/no direction)"))
+
+    if rotation_direction != "no direction":
+        board = game.rotate_board(rotation_row, rotation_direction, board, occupied_rows)
+
+    print(f">>> PLAYER ({player_number}) - {rotation_direction} Rotation Applied on Row {rotation_row}")
+
+    game.print_board(board)
+
+    return game, board, turn
+
+def random_turn(game, board, turn, depth, random_number, opp_number):
         
         valid_locations = game.get_valid_locations(board)
         random_column = random.choice(valid_locations)
@@ -688,80 +664,68 @@ def random_turn(game, board, turn, piece):
 
         if occupied_rows:
             
-
             # Choose a random rotation direction or choose not to rotate
             rotation_direction = random.choice(["left", "right", "no direction"])
             random_rotation_row = random.choice(occupied_rows)
 
             # Drop the token and apply rotation
             row = game.get_next_open_row(board, random_column)
-            board = game.drop_piece(board, row, random_column, piece)
+            board = game.drop_piece(board, row, random_column, random_number)
             game.apply_gravity(board)
 
-            print(f"RANDOM ({piece}) - Drop Column: {random_column}")
+            print(f"RANDOM ({random_number}) - Drop Column: {random_column}")
             game.print_board(board)
 
       
             if rotation_direction != "no direction":
                 board = game.rotate_board(random_rotation_row, rotation_direction, board, occupied_rows)
 
-            print(f"RANDOM - {rotation_direction} Rotation Applied on Row {random_rotation_row}")
+            print(f"RANDOM ({random_number}) - {rotation_direction} Rotation Applied on Row {random_rotation_row}")
             game.print_board(board)
 
         else:
             # If there are no occupied rows, just drop the token without rotation
             row = game.get_next_open_row(board, random_column)
-            board = game.drop_piece(board, row, random_column, piece)
+            board = game.drop_piece(board, row, random_column, random_number)
             
             game.apply_gravity(board)
             game.print_board(board)
 
-            print(f"RANDOM - No Rotation Applied on Row")
+            print(f"RANDOM ({random_number}) - No Rotation Applied on Row")
 
-        game.increase_total_turns()
-        turn += 1
-        turn = turn % 2   
 
         return game, board, turn
 
-def minimax_turn(game, board, turn, piece):
+def minimax_turn(game, board, turn, depth, minimax_number, opp_number):
     
-    column, value, rotation_direction, rotation_row, node_count = game.minimax(board, DEPTH, -math.inf, math.inf, True)
-    print(node_count)
-
-
+    column, value, rotation_direction, rotation_row = game.minimax(board, depth, -math.inf, math.inf, True, minimax_number, opp_number)
+    
     if (column != None):
         if game.is_valid_location(board, column):
             #pygame.time.wait(500)
             row = game.get_next_open_row(board, column)
-            board = game.drop_piece(board, row, column, piece)
+            board = game.drop_piece(board, row, column, minimax_number)
 
-            if game.winning_move(board, piece):
-                game.set_game_over(True)
-                game.set_winner("minimax")
+            #game.check_for_win(board)
 
-            print(f"MINIMAX {piece} - Drop Column: {column} - Value {value} ")
+            print(f">>> MINIMAX ({minimax_number}) - Drop Column: {column} - Value {value} ")
             game.print_board(board)
 
-            print(f"MINIMAX - {rotation_direction} Rotation Applied on Row {rotation_row} - Value {value} ")
+            #game.check_for_win(board)
+
+            print(f">>> MINIMAX ({minimax_number}) - Rotation Dir: {rotation_direction} on Row :{rotation_row} - Value {value} ")
+
             occupied_rows = game.find_occupied_rows(board)
             board = game.rotate_board(rotation_row, rotation_direction, board, occupied_rows)
 
             game.print_board(board)
-
-            if game.winning_move(board, piece):
-                game.set_game_over(True)
-                game.set_winner("minimax")
-
-            game.increase_total_turns()
-            turn += 1
-            turn = turn % 2
-
+        
             return game, board, turn
 
-def negamax_turn(game, board, turn, piece):
+#def negamax_turn(game, board, turn, piece, depth):
+def negamax_turn(game, board, turn, depth, negamax_number, opp_number):
 
-    column, value, rotation_direction, rotation_row = game.negamax(board, DEPTH, -math.inf, math.inf, NEGAMAX)
+    column, value, rotation_direction, rotation_row = game.negamax(board, depth, -math.inf, math.inf, negamax_number)
 
     #best_column, value, best_direction, best_row, node_count
     print(f"drop_column = {column} rotation_row = {rotation_row} rotation_direction = {rotation_direction} value = {value}")
@@ -769,34 +733,27 @@ def negamax_turn(game, board, turn, piece):
 
     if (column != None):
         if game.is_valid_location(board, column):
+            #pygame.time.wait(500)
             row = game.get_next_open_row(board, column)
-            board = game.drop_piece(board, row, column, piece)
+            board = game.drop_piece(board, row, column, negamax_number)
 
-            if game.winning_move(board, piece):
-                game.set_game_over(True)
-                game.set_winner("negamax")
+            #game.check_for_win(board)
 
-            print(f"NEGAMAX ({piece}) - Drop Column: {column} - Value {value} ")
+            print(f">>> NEGAMAX ({negamax_number}) - Drop Column: {column} - Value {value} ")
             game.print_board(board)
 
-            print(f"NEGAMAX ({piece}) - {rotation_direction} Rotation Applied on Row {rotation_row} - Value {value} ")
-            
+            #game.check_for_win(board)
+
+            print(f">>> NEGAMAX ({negamax_number}) - Rotation Dir: {rotation_direction} on Row :{rotation_row} - Value {value} ")
+
             occupied_rows = game.find_occupied_rows(board)
             board = game.rotate_board(rotation_row, rotation_direction, board, occupied_rows)
 
             game.print_board(board)
-
-            if game.winning_move(board, piece):
-                game.set_game_over(True)
-                game.set_winner("negamax")
-
-            game.increase_total_turns()
-            turn += 1
-            turn = turn % 2
-
+        
             return game, board, turn
 
-def player_turn(game, board, turn):
+def player_turn_old(game, board, turn):
     col = int(input("COL:"))
 
     if game.is_valid_location(board, col):
@@ -814,231 +771,138 @@ def player_turn(game, board, turn):
 
         return game, board, turn
     
-def play_against_minimax():
-    game = ConnectFourTwist()
-    turn = random.randint(OPP_MINIMAX, MINIMAX)
-    board = game.get_board()
 
-    print("here")
 
-    while not game.get_game_over():
 
-        # Ask for Player 1 Input
-        if turn == PLAYER:  
-            game, board = player_turn(game, board)
-            
-        # # Ask for Player 2 Input
-        if turn == AI and not game.get_game_over():				
-            game, board = minimax_turn(game, board)
 
-        print(game.get_game_over())
-        if game.get_game_over():
-            print("GAME OVER")
-            exit()
+def alternate_turn():
+    while True:
+        yield 1
+        yield 2
 
-def play_against_negamax():
-    game = ConnectFourTwist()
-    turn = random.randint(NEGAMAX, OPP_NEGAMAX)
+def run_game(player1, player2, depth):
+
+    turn = random.randint(1, 2)
+    turn_generator = alternate_turn()
+    game = ConnectFourTwistAndTurn(player1, player2, depth)
+
+    players = game.get_players()
+
+    print(f"Player {1} - {players[1].get_name()}")
+    print(f"Player {2} - {players[2].get_name()}")
+
+    starter = players[turn]
+    game.set_starter(starter)
+
     board = game.get_board()
 
     while not game.get_game_over():
+        game.set_current_node_count(0)
+        current_player = players[turn]
+        other_player = players[1 + (turn)%2]
 
-        # Ask for Player 1 Input
-        if turn == OPP_NEGAMAX and not game.get_game_over():
-            game, board = player_turn(game, board)
-            
-        # Ask for Player 2 Input
-        if turn == NEGAMAX and not game.get_game_over():				
-            game, board = negamax_turn(game, board)
-            
-        print(game.get_game_over())
-        if game.get_game_over():
-            print("GAME OVER")
-            exit()
+        print(f"current player: {current_player.get_name()} turn: {turn} - other player is {other_player.get_name()}")
 
-winning_board = []
+        start_time = time.time()
+        game, board, turn = current_player.run_strategy(game, board, turn, depth)
+        end_time = time.time()
 
-def play_minimax_vs_negamax():
-    
+        current_player.add_turn_nodes(game.get_current_node_count())
+        current_player.add_turn_time(end_time - start_time)
 
-    turn = random.randint(0, 1)
-    game = ConnectFourTwist(turn)
-    
-    board = game.get_board()
+        game.increase_total_turns()
 
-    print("HERE 1")
+        if turn == 1:
+            game.update_players(player1=current_player, player2=other_player)
+        elif turn == 2:
+            game.update_players(player2=current_player, player1=other_player)
 
-    while not game.get_game_over():
-        print(f"HERE 2 turn = {turn}")
-
-
-        if turn == 0 and not game.get_game_over():
-            game, board, turn = minimax_turn(game, board, turn, MINIMAX)
-
-        if game.winning_move(board, MINIMAX):
-            game.set_game_over(True)
-            game.set_winner("minimax")
-
-        if game.winning_move(board, NEGAMAX):
-            game.set_game_over(True)
-            game.set_winner("negamax")
-
-        #print(game.get_game_over())
-        if game.get_game_over():
-            print("GAME OVER")
-            print(f"Winner is {game.get_winner()}")
-            write_to_csv(game, "minimax_vs_negamax.csv", DEPTH)
-            winning_board.append(board)
-            #exit()
-            
-        if turn == 1 and not game.get_game_over():				
-            game, board, turn = negamax_turn(game, board, turn, NEGAMAX)
-
-        if game.winning_move(board, MINIMAX):
-            game.set_game_over(True)
-            game.set_winner("minimax")
-
-        if game.winning_move(board, NEGAMAX):
-            game.set_game_over(True)
-            game.set_winner("negamax")
-
-        #print(game.get_game_over())
-        if game.get_game_over():
-            print("GAME OVER")
-            print(f"Winner is {game.get_winner()}")
-            write_to_csv(game, "minimax_vs_negamax.csv", DEPTH)
-            winning_board.append(board)
-            #exit()
-            
-            #play_minimax_vs_negamax()
-
-def check_for_win(game, board, piece1, piece2, name1, name2):
-
-    filename = f"{name1}_vs_{name2}.csv"
-
-    if game.winning_move(board, piece1):
-        game.set_game_over(True)
-        game.set_winner(name1)
-
-    if game.winning_move(board, piece2):
-        game.set_game_over(True)
-        game.set_winner(name2)
-
-    if game.get_game_over():
-        print("GAME OVER")
-        print(f"Winner is {game.get_winner()}")
-        write_to_csv(game, filename)
-        winning_board.append(board)
-
-        return True
-    
-    return False
+        game.check_for_win(board)
         
-def play_minimax_vs_random():
-    turn = random.randint(0, 1)
-    game = ConnectFourTwist(turn)
-    board = game.get_board()
+        turn = next(turn_generator)
 
-    while not game.get_game_over():
 
-        if turn == 0 and not game.get_game_over():
-            game.set_current_node_count(0)
-            start_time = time.time()
-            game, board, turn = minimax_turn(game, board, turn, MINIMAX)
-            end_time = time.time()
+def play_minimax_vs_random(depth):
+    negamax_player = Player("red", 1, "Minimax", minimax_turn)
+    random_player = Player("yellow", 2, "Random", random_turn)    
 
-            game.add_turn_nodes(game.get_current_node_count())
-            game.add_turn_time(end_time - start_time)
+    run_game(negamax_player, random_player, depth) 
 
-        if check_for_win(game, board, MINIMAX, OPP_MINIMAX, "minimax", "random"):
-            break
-       
-        if turn == 1 and not game.get_game_over(): 
-            game, board, turn  = random_turn(game, board, turn, OPP_MINIMAX)
+def play_negamax_vs_random(depth):
+    negamax_player = Player("red", 1, "Negamax", negamax_turn)
+    random_player = Player("yellow", 2, "Random", random_turn)    
 
-        if check_for_win(game, board, MINIMAX, OPP_MINIMAX, "minimax", "random"):
-            break
+    run_game(negamax_player, random_player, depth)    
 
-def play_negamax_vs_random():
-    turn = random.randint(0, 1)
+def play_random_vs_random(depth):
+    random_1_player = Player("red", 1, "Random", random_turn)
+    random_2_player = Player("yellow", 2, "Random", random_turn) 
 
-    turn_piece_dict = {
-        0: [NEGAMAX, "negamax"],
-        1: [OPP_NEGAMAX, "random"]
-    }
+    run_game(random_1_player, random_2_player, depth)  
 
-    starter = turn_piece_dict[turn][1]
-    print(starter)
+def play_player_vs_negamax(depth):
+    player = Player("red", 1, "Player", player_turn)
+    negamax_player = Player("yellow", 2, "Negamax", negamax_turn)    
 
-    game = ConnectFourTwist(starter)
-    board = game.get_board()
+    run_game(player, negamax_player, depth)   
 
-    while not game.get_game_over():
 
-        if turn == 0 and not game.get_game_over():
-            game.set_current_node_count(0)
-            start_time = time.time()
-            game, board, turn = negamax_turn(game, board, turn, NEGAMAX)
-            end_time = time.time()
-            
-            game.add_turn_nodes(game.get_current_node_count())
-            game.add_turn_time(end_time - start_time)
 
-        if check_for_win(game, board, NEGAMAX, OPP_NEGAMAX, "negamax", "random"):
-            break
-       
-        if turn == 1 and not game.get_game_over():
-            game, board, turn  = random_turn(game, board, turn, OPP_NEGAMAX)
-
-        if check_for_win(game, board, NEGAMAX, OPP_NEGAMAX, "negamax", "random"):
-            break
-
-def play_random_vs_random():
-    turn = random.randint(0, 1)
-
-    turn_piece_dict = {
-        0: [1, "random_1"],
-        1: [2, "random_2"]
-    }
-
-    starter = turn_piece_dict[turn][1]
-    print(starter)
-
-    game = ConnectFourTwist(starter)
-    board = game.get_board()
-
-    while not game.get_game_over():
-
-        if turn == 0 and not game.get_game_over():
-            game, board, turn  = random_turn(game, board, turn, 1)
-
-        if check_for_win(game, board, 1, 2, "random_1", "random_2"):
-            break
-       
-        if turn == 1 and not game.get_game_over():
-            game, board, turn  = random_turn(game, board, turn, OPP_NEGAMAX)
-
-        if check_for_win(game, board, 1, 2, "random_1", "random_2"):
-            break
-     
         
-#play_minimax_vs_negamax()
+def play_minimax_vs_random_old(depth):
+    
+    minimax_player = Player("red", 1, "Minimax", minimax_turn)
+    random_player = Player("yellow", 2, "Random", random_turn)        
 
-#for _ in range(15):
-#play_minimax_vs_random()
+    turn = random.randint(1, 2)
+    turn_generator = alternate_turn()
+    game = ConnectFourTwistAndTurn(minimax_player, random_player, depth)
 
-#play_minimax_vs_random()
+    players = game.get_players()
 
-#for _ in range(15):
-#play_negamax_vs_random()
-for _ in range(50):
-    play_random_vs_random()
+    print(f"Player {1} - {players[1].get_name()}")
+    print(f"Player {2} - {players[2].get_name()}")
 
-#print(winning_board)
+    starter = players[turn]
+    game.set_starter(starter)
 
-#for board in winning_board:
-#    print("=========")
-#    for row in board:
-#        print(row)
+    board = game.get_board()
 
-#test_circular_horizontal()
+    while not game.get_game_over():
+        game.set_current_node_count(0)
+        current_player = players[turn]
+        other_player = players[1 + (turn)%2]
+
+        print(f"current player: {current_player.get_name()} turn: {turn} - other player is {other_player.get_name()}")
+
+        start_time = time.time()
+        game, board, turn = current_player.run_strategy(game, board, turn, depth)
+        end_time = time.time()
+
+        current_player.add_turn_nodes(game.get_current_node_count())
+        current_player.add_turn_time(end_time - start_time)
+
+        game.increase_total_turns()
+
+        if turn == 1:
+            game.update_players(player1=current_player, player2=other_player)
+        elif turn == 2:
+            game.update_players(player2=current_player, player1=other_player)
+
+        game.check_for_win(board)
+        
+        turn = next(turn_generator)
+
+def run_strategies():
+    count = 0
+    max_depth = MAX_DEPTH
+
+    for x in range(30):
+        if count % 5 == 0 and count != 0:
+            max_depth -= 1
+            
+        play_minimax_vs_random(max_depth)
+        play_negamax_vs_random(max_depth)
+        play_random_vs_random(max_depth)
+
+run_strategies()

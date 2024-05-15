@@ -1,4 +1,4 @@
-from C4T import ConnectFourTwist
+from C4TAT import ConnectFourTwist
 
 def test_circular_horizontal():
     turn = random.randint(0, 1)
