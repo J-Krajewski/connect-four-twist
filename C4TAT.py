@@ -3,45 +3,32 @@ import random
 from colorama import Fore, Style
 import csv
 import time
-
+import itertools
 import sys
 import math
+import decimal  
 
 from Player import Player 
 
-
-
 ROWS = 5
 COLUMNS = 6
-
-PLAYER = 0
-AI = 1
-
-EMPTY = 0
-PLAYER_PIECE = 1
-AI_PIECE = 2
-
-OPP_MINIMAX = 1
-MINIMAX = 2
-
-NEGAMAX = 1
-OPP_NEGAMAX = 2
-
 WINDOW_LENGTH = 4
+EMPTY = 0
 
-MAX_DEPTH = 4
+MAX_DEPTH = 5
 
 class ConnectFourTwistAndTurn:
 	
-    def __init__(self, player1, player2, depth):
+    def __init__(self, player1, player2, ab_pruning, t_tables):
         self.__player1 = player1
         self.__player2 = player2
         self.__players = {1: self.__player1, 2: self.__player2}
+        self.__ab_pruning = ab_pruning
+        self.__t_tables = t_tables
         
-        self.__board = self.init_board()
+        self.__board = self.create_board()
         self.__game_over = False
         self.__transposition_table = {}
-        self.__depth = depth
         self.__current_node_count = 0
         
         # Winning Stats Collected 
@@ -49,12 +36,13 @@ class ConnectFourTwistAndTurn:
         self.__total_turns = 0
         self.__starter = None
         self.__win_direction = None
-        
-        
 
-    def init_board(self):
+        
+        
+        
+    def create_board(self):
         board = np.zeros((ROWS,COLUMNS), dtype=int)
-        #board = [[0 * COLUMNS] for x in range(ROWS)]
+        
         return board
 
     def drop_piece(self, board, row, col, piece):
@@ -84,6 +72,7 @@ class ConnectFourTwistAndTurn:
         #print(f"Occupied Rows {occupied_rows}")    
         return occupied_rows
     
+   
     def apply_gravity(self, board):
         
         for col in range(COLUMNS):
@@ -96,10 +85,6 @@ class ConnectFourTwistAndTurn:
 
             
     def rotate_board(self, row, direction, board, occupied_rows):
-
-        #if row not in occupied_rows:
-        #    print(f"There is no token on row {row}")
-        #    return board
 
         if direction == "right":
             board[row] = np.roll(board[row],+1)
@@ -117,6 +102,7 @@ class ConnectFourTwistAndTurn:
         else:
             print(f"{direction} is not a direction option, rotation not applied")
             return board
+
 
     def print_board(self, board):
         rev_board = board[::-1] # Reverse just for printing 
@@ -175,17 +161,12 @@ class ConnectFourTwistAndTurn:
                     self.__win_direction = "lrd"
                     return True
                 
-    
-    
-                                                   
+                                           
     def evaluate_window(self, window, piece, direction):
         score = 0
         multiplier = 1
         
-        if piece == 1:
-            opp_piece = 2
-        elif piece == 2:
-            opp_piece = 1
+        opp_piece = 3 - piece
 
         if (direction == "vertical") or (direction == "lru") or (direction == "lrd"):
             multiplier = 1.5
@@ -226,14 +207,13 @@ class ConnectFourTwistAndTurn:
 
         return score
     
-    def evaluate_board(self, board, piece):
+    def score_board(self, board, piece):
         score = 0
-        score_value = 3
+        score_value = 50
 
-        if piece == 1:
-            opp_piece = 2
-        elif piece == 2:
-            opp_piece = 1
+        opp_piece = 3 - piece
+
+        
 
         # Checking for common win method  - which is a win in one turn 
         # Currently only works for vertical
@@ -256,10 +236,10 @@ class ConnectFourTwistAndTurn:
                     # if the adjacent token to your piece is opp piece, punish
                     if left_token_3 == opp_piece:
                         score -= score_value
-                        print(f"{tokens} - left token 3: {left_token_3}")
+                        #print(f"{tokens} - left token 3: {left_token_3}")
                     elif right_token_3 == opp_piece:
                         score -= score_value
-                        print(f"{tokens} - right token 3: {right_token_3}")
+                        #print(f"{tokens} - right token 3: {right_token_3}")
 
                 elif tokens == [opp_piece, piece, opp_piece]:
                     #print(tokens)
@@ -270,10 +250,10 @@ class ConnectFourTwistAndTurn:
                     # if the adjacent token to your piece is opp piece, punish
                     if left_token_2 == opp_piece:
                         score -= score_value
-                        print(f"{tokens} - left token 2: {left_token_2}")
+                        #print(f"{tokens} - left token 2: {left_token_2}")
                     elif right_token_2 == opp_piece:
                         score -= score_value
-                        print(f"{tokens} - right token 2: {right_token_2}")
+                        #print(f"{tokens} - right token 2: {right_token_2}")
             
                 elif tokens == [piece, opp_piece, opp_piece]:
                     #print(tokens)
@@ -284,10 +264,10 @@ class ConnectFourTwistAndTurn:
                     # if the adjacent token to your piece is opp piece, punish
                     if left_token_1 == opp_piece:
                         score -= score_value
-                        print(f"{tokens} - left token 1: {left_token_1}")
+                        #print(f"{tokens} - left token 1: {left_token_1}")
                     elif right_token_1 == opp_piece:
                         score -= score_value
-                        print(f"{tokens} - right token 1: {right_token_1}")
+                        #print(f"{tokens} - right token 1: {right_token_1}")
                         
         return score
     
@@ -297,7 +277,6 @@ class ConnectFourTwistAndTurn:
         for r in range(ROWS):
             for c in range(COLUMNS):
                 window = [board[r][(c + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
-
                 #print(f"lrd window {window}")
                 score += self.evaluate_window(window, piece, "horizontal")
 
@@ -319,21 +298,21 @@ class ConnectFourTwistAndTurn:
                 window = [board[r-i][(c - i) % COLUMNS] for i in range(WINDOW_LENGTH)]
                 score += self.evaluate_window(window, piece, "lrd")
 
-        #score += self.evaluate_board(board, piece)
+        score += self.score_board(board, piece)
                 
         return score
 
-    def is_terminal_node(self, board):
+    def check_leaf_node(self, board):
         p1_winning_move = self.winning_move(board, 1)
         p2_winning_move = self.winning_move(board, 2)
         no_more_moves = (len(self.get_valid_locations(board)) == 0)
 
         return  p1_winning_move or p2_winning_move or no_more_moves
 
-    def minimax(self, board, depth, alpha, beta, maximizingPlayer, minimax_number, opp_number):
+    def minimax_old(self, board, depth, alpha, beta, maximizingPlayer, minimax_number, opp_number):
         valid_locations = self.get_valid_locations(board)
         occupied_rows = self.find_occupied_rows(board)
-        is_terminal = self.is_terminal_node(board)
+        is_leaf = self.check_leaf_node(board)
 
         #print(node_count)
 
@@ -353,8 +332,8 @@ class ConnectFourTwistAndTurn:
                 
         self.__current_node_count += 1
             
-        if depth == 0 or is_terminal:
-            if is_terminal:
+        if depth == 0 or is_leaf:
+            if is_leaf:
                 if self.winning_move(board, minimax_number):
                     return (None, 100000000000000)
                 elif self.winning_move(board, opp_number):
@@ -435,30 +414,139 @@ class ConnectFourTwistAndTurn:
                         if alpha >= beta:
                             break
             return column, value, direction, row
+
+
+    def minimax(self, board, depth, alpha, beta, maximizingPlayer, minimax_number, opp_number):
+        valid_locations = self.get_valid_locations(board)
+        occupied_rows = self.find_occupied_rows(board)
+        is_leaf = self.check_leaf_node(board)
+
+        
+        key = str(board)
+        if self.__t_tables:  
+            if key in self.__transposition_table:
+                entry = self.__transposition_table[key]
+                if entry['depth'] >= depth:
+                    if entry['type'] == 'exact':
+                        return None, entry['score']
+                    elif entry['type'] == 'lowerbound':
+                        alpha = max(alpha, entry['score'])
+                    elif entry['type'] == 'upperbound':
+                        beta = min(beta, entry['score'])
+                    if alpha >= beta:
+                        return None, entry['score']
+                
+        self.__current_node_count += 1
+            
+        if depth == 0 or is_leaf:
+            if is_leaf:
+                if self.winning_move(board, minimax_number):
+                    return (None, 100000000000000)
+                elif self.winning_move(board, opp_number):
+                    return (None, -10000000000000)
+                else: # Game is over, no more valid moves
+                    return (None, 0)
+            else: # Depth is zero
+                return (None, self.score_position(board, minimax_number))
+            
+        if maximizingPlayer:
+            value = -math.inf
+            column = random.choice(valid_locations)
+            direction = None
+            row = None
+
+            for drop_col in valid_locations:
+                for rotation_direction in ["left", "right", "no direction"]:
+                    for rotation_row in occupied_rows:
+                        b_copy = board.copy()
+                        drop_row = self.get_next_open_row(b_copy, drop_col)
+
+                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, minimax_number)
+                        
+                        if rotation_direction != "no direction":
+                            # Rotate the board
+                            rotated_board = self.rotate_board(rotation_row, rotation_direction, b_copy, occupied_rows)
+                        else:
+                            rotated_board = b_copy
+
+                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, False, minimax_number, opp_number)[1]
+                        if new_score > value:
+                            value = new_score
+                            column = drop_col
+                            direction = rotation_direction
+                            row = rotation_row
+                        if self.__ab_pruning:
+                            alpha = max(alpha, value)
+                            if alpha >= beta:
+                                break
+
+            # Adding the state to the transposition table 
+            if self.__t_tables:
+                self.__transposition_table[key] = {
+                    'depth': depth,
+                    'score': value,
+                    'type': 'exact' if value >= beta else ('lowerbound' if value > alpha else 'upperbound')
+                }
+
+            return column, value, direction, row
+
+        else: # Minimizing player
+            value = math.inf
+            column = random.choice(valid_locations)
+            rotation_direction = None
+            rotation_row = None
+
+            for drop_col in valid_locations:
+                for rotation_direction in ["left", "right", "no direction"]:
+                    for rotation_row in occupied_rows:
+                        b_copy = board.copy()
+                        drop_row = self.get_next_open_row(b_copy, drop_col)
+
+                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, opp_number)
+                        
+                        if rotation_direction != "no direction":
+                            # Rotate the board
+                            rotated_board = self.rotate_board(rotation_row, rotation_direction, b_copy, occupied_rows)
+                        else:
+                            rotated_board = b_copy
+
+                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, True, minimax_number, opp_number)[1]
+                        if new_score < value:
+                            value = new_score
+                            column = drop_col
+                            direction = rotation_direction
+                            row = rotation_row
+                        if self.__ab_pruning:
+                            beta = min(beta, value)
+                            if alpha >= beta:
+                                break
+            return column, value, direction, row
+
         
     def negamax(self, board, depth, alpha, beta, sign):
         valid_locations = self.get_valid_locations(board)
         occupied_rows = self.find_occupied_rows(board)
-        is_terminal = self.is_terminal_node(board)
+        is_leaf = self.check_leaf_node(board)
 
         # Checking if board state is in the transposition table
         key = str(board)
-        if key in self.__transposition_table:
-            entry = self.__transposition_table[key]
-            if entry['depth'] >= depth:
-                if entry['type'] == 'exact':
-                    return None, entry['score'], None, None
-                elif entry['type'] == 'lowerbound':
-                    alpha = max(alpha, entry['score'])
-                elif entry['type'] == 'upperbound':
-                    beta = min(beta, entry['score'])
-                if alpha >= beta:
-                    return None, entry['score'], None, None
+        if self.__t_tables:
+            if key in self.__transposition_table:
+                entry = self.__transposition_table[key]
+                if entry['depth'] >= depth:
+                    if entry['type'] == 'exact':
+                        return None, entry['score'], None, None
+                    elif entry['type'] == 'lowerbound':
+                        alpha = max(alpha, entry['score'])
+                    elif entry['type'] == 'upperbound':
+                        beta = min(beta, entry['score'])
+                    if alpha >= beta:
+                        return None, entry['score'], None, None
                 
         self.__current_node_count += 1
                 
-        if depth == 0 or is_terminal:
-            if is_terminal:
+        if depth == 0 or is_leaf:
+            if is_leaf:
                 if self.winning_move(board, sign):
                     return None, 100000000000000, None, None
                 elif self.winning_move(board, 3 - sign):  # opponent's sign
@@ -504,6 +592,41 @@ class ConnectFourTwistAndTurn:
         }
 
         return column, value, direction, row
+    
+    # This player only plays the immediate next best move
+    def greedy_search(self, board, player_number, opp_number):
+        valid_locations = self.get_valid_locations(board)
+        occupied_rows = self.find_occupied_rows(board)
+        
+        best_score = -math.inf
+        best_col = random.choice(valid_locations)
+        best_direction = "no direction"
+        best_row = None
+
+        for drop_col in valid_locations:
+            for rotation_direction in ["left", "right", "no direction"]:
+                for rotation_row in occupied_rows:
+                    b_copy = board.copy()
+                    drop_row = self.get_next_open_row(b_copy, drop_col)
+
+                    b_copy = self.drop_piece(b_copy, drop_row, drop_col, player_number)
+                    
+                    if rotation_direction != "no direction":
+                        rotated_board = self.rotate_board(rotation_row, rotation_direction, b_copy, occupied_rows)
+                    else:
+                        rotated_board = b_copy
+
+                    score = self.score_position(rotated_board, player_number)
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_col = drop_col
+                        best_direction = rotation_direction
+                        best_row = rotation_row
+
+        return best_col, best_score, best_direction, best_row
+
+        
  
     def get_valid_locations(self, board):
         valid_locations = []
@@ -530,23 +653,44 @@ class ConnectFourTwistAndTurn:
             print("GAME OVER")
             print(f"Winner is {self.get_winner()}")
             self.write_to_csv()
-            winning_board.append(board)
+            
 
             return True
         
         return False
     
     def write_to_csv(self):
-        filename = f"{self.__player1.get_name()}_vs_{self.__player2.get_name()}.csv"
+        p1_name = self.__player1.get_name().lower()
+        p2_name = self.__player2.get_name().lower()
+
+        filename = f"Results/{p1_name}_vs_{p2_name}.csv"
 
         with open(filename, mode='a') as file:
             writer = csv.writer(file)
         
-            row = [self.__winner, self.__starter.get_name(), self.__total_turns, self.__win_direction, self.__depth]
+            row = [self.__winner, self.__starter.get_name(), self.__total_turns, 
+                   self.__win_direction, self.__ab_pruning, self.__t_tables]
             row = self.__player1.add_player_info(row)
             row = self.__player2.add_player_info(row)
             
             writer.writerow(row)
+
+    def generate_scenario(self, tokens_per_player):
+
+        for j in range(tokens_per_player):
+            # Determine who places first randomly
+            first_player = random.randint(1, 2)
+            second_player = 3 - first_player
+
+            # Place and rotate randomly two token
+            self, self.__board, turn = random_turn(self, self.__board, None, None, random_number=first_player, opp_number=second_player, display=False)
+            self, self.__board, turn = random_turn(self, self.__board, None, None, random_number=second_player, opp_number=first_player, display=False)
+
+
+        print(f">>> GENERATED SCENARIO")
+        self.print_board(self.__board)
+    
+
     
     def get_game_over(self):
         return self.__game_over
@@ -617,7 +761,7 @@ def turn_rotate_board(row, direction, game, board):
 
     return game
 
-def player_turn(game, board, turn, depth, player_number, opp_number):
+def player_turn(game, board, turn, depth, player_number, opp_number, display=True):
 
     # Get the Drop Column
     valid_locations = game.get_valid_locations(board)
@@ -654,7 +798,7 @@ def player_turn(game, board, turn, depth, player_number, opp_number):
 
     return game, board, turn
 
-def random_turn(game, board, turn, depth, random_number, opp_number):
+def random_turn(game, board, turn, depth, random_number, opp_number, display=True):
         
         valid_locations = game.get_valid_locations(board)
         random_column = random.choice(valid_locations)
@@ -673,15 +817,14 @@ def random_turn(game, board, turn, depth, random_number, opp_number):
             board = game.drop_piece(board, row, random_column, random_number)
             game.apply_gravity(board)
 
-            print(f"RANDOM ({random_number}) - Drop Column: {random_column}")
-            game.print_board(board)
+            if display: print(f">>> RANDOM ({random_number}) - Drop Column: {random_column}")
+            if display: game.print_board(board)
 
-      
             if rotation_direction != "no direction":
                 board = game.rotate_board(random_rotation_row, rotation_direction, board, occupied_rows)
 
-            print(f"RANDOM ({random_number}) - {rotation_direction} Rotation Applied on Row {random_rotation_row}")
-            game.print_board(board)
+            if display: print(f">>> RANDOM ({random_number}) - {rotation_direction} Rotation Applied on Row {random_rotation_row}")
+            if display: game.print_board(board)
 
         else:
             # If there are no occupied rows, just drop the token without rotation
@@ -691,12 +834,12 @@ def random_turn(game, board, turn, depth, random_number, opp_number):
             game.apply_gravity(board)
             game.print_board(board)
 
-            print(f"RANDOM ({random_number}) - No Rotation Applied on Row")
+            if display: print(f">>> RANDOM ({random_number}) - No Rotation Applied on Row")
 
 
         return game, board, turn
 
-def minimax_turn(game, board, turn, depth, minimax_number, opp_number):
+def minimax_turn(game, board, turn, depth, minimax_number, opp_number, display=True):
     
     column, value, rotation_direction, rotation_row = game.minimax(board, depth, -math.inf, math.inf, True, minimax_number, opp_number)
     
@@ -708,22 +851,43 @@ def minimax_turn(game, board, turn, depth, minimax_number, opp_number):
 
             #game.check_for_win(board)
 
-            print(f">>> MINIMAX ({minimax_number}) - Drop Column: {column} - Value {value} ")
-            game.print_board(board)
+            if display: print(f">>> MINIMAX ({minimax_number}) - Drop Column: {column} - Value {value} ")
+            if display: game.print_board(board)
 
             #game.check_for_win(board)
 
-            print(f">>> MINIMAX ({minimax_number}) - Rotation Dir: {rotation_direction} on Row :{rotation_row} - Value {value} ")
+            if display: print(f">>> MINIMAX ({minimax_number}) - Rotation Dir: {rotation_direction} on Row :{rotation_row} - Value {value} ")
 
             occupied_rows = game.find_occupied_rows(board)
             board = game.rotate_board(rotation_row, rotation_direction, board, occupied_rows)
 
-            game.print_board(board)
+            if display: game.print_board(board)
+        
+            return game, board, turn
+        
+def greedy_turn(game, board, turn, depth, greedy_number, opp_number, display=True):
+    
+    column, value, rotation_direction, rotation_row = game.greedy_search(board, greedy_number, opp_number)
+    
+    if (column != None):
+        if game.is_valid_location(board, column):
+            row = game.get_next_open_row(board, column)
+            board = game.drop_piece(board, row, column, greedy_number)
+
+            if display: print(f">>> GREEDY ({greedy_number}) - Drop Column: {column} - Value {value} ")
+            if display: game.print_board(board)
+
+            if display: print(f">>> GREEDY ({greedy_number}) - Rotation Dir: {rotation_direction} on Row :{rotation_row} - Value {value} ")
+
+            occupied_rows = game.find_occupied_rows(board)
+            board = game.rotate_board(rotation_row, rotation_direction, board, occupied_rows)
+
+            if display: game.print_board(board)
         
             return game, board, turn
 
 #def negamax_turn(game, board, turn, piece, depth):
-def negamax_turn(game, board, turn, depth, negamax_number, opp_number):
+def negamax_turn(game, board, turn, depth, negamax_number, opp_number, display=True):
 
     column, value, rotation_direction, rotation_row = game.negamax(board, depth, -math.inf, math.inf, negamax_number)
 
@@ -739,135 +903,43 @@ def negamax_turn(game, board, turn, depth, negamax_number, opp_number):
 
             #game.check_for_win(board)
 
-            print(f">>> NEGAMAX ({negamax_number}) - Drop Column: {column} - Value {value} ")
-            game.print_board(board)
+            if display: print(f">>> NEGAMAX ({negamax_number}) - Drop Column: {column} - Value {value} ")
+            if display: game.print_board(board)
 
             #game.check_for_win(board)
 
-            print(f">>> NEGAMAX ({negamax_number}) - Rotation Dir: {rotation_direction} on Row :{rotation_row} - Value {value} ")
+            if display: print(f">>> NEGAMAX ({negamax_number}) - Rotation Dir: {rotation_direction} on Row :{rotation_row} - Value {value} ")
 
             occupied_rows = game.find_occupied_rows(board)
             board = game.rotate_board(rotation_row, rotation_direction, board, occupied_rows)
 
-            game.print_board(board)
+            if display: game.print_board(board)
         
             return game, board, turn
 
-def player_turn_old(game, board, turn):
-    col = int(input("COL:"))
 
-    if game.is_valid_location(board, col):
-        row = game.get_next_open_row(board, col)
-        board = game.drop_piece(board, row, col, PLAYER_PIECE)
-
-        if game.winning_move(board, PLAYER_PIECE):
-            game.set_game_over(True)
-
-        game.print_board(board)
-
-        game.increase_total_turns()
-        turn += 1
-        turn = turn % 2
-
-        return game, board, turn
-    
-
-
-
-
-def alternate_turn():
+def alternate_turn(start_turn, next_turn):
     while True:
-        yield 1
-        yield 2
+        yield next_turn
+        yield start_turn
 
-def run_game(player1, player2, depth):
+
+def run_game(game):
 
     turn = random.randint(1, 2)
-    turn_generator = alternate_turn()
-    game = ConnectFourTwistAndTurn(player1, player2, depth)
-
-    players = game.get_players()
-
-    print(f"Player {1} - {players[1].get_name()}")
-    print(f"Player {2} - {players[2].get_name()}")
-
-    starter = players[turn]
-    game.set_starter(starter)
-
-    board = game.get_board()
-
-    while not game.get_game_over():
-        game.set_current_node_count(0)
-        current_player = players[turn]
-        other_player = players[1 + (turn)%2]
-
-        print(f"current player: {current_player.get_name()} turn: {turn} - other player is {other_player.get_name()}")
-
-        start_time = time.time()
-        game, board, turn = current_player.run_strategy(game, board, turn, depth)
-        end_time = time.time()
-
-        current_player.add_turn_nodes(game.get_current_node_count())
-        current_player.add_turn_time(end_time - start_time)
-
-        game.increase_total_turns()
-
-        if turn == 1:
-            game.update_players(player1=current_player, player2=other_player)
-        elif turn == 2:
-            game.update_players(player2=current_player, player1=other_player)
-
-        game.check_for_win(board)
-        
-        turn = next(turn_generator)
-
-
-def play_minimax_vs_random(depth):
-    negamax_player = Player("red", 1, "Minimax", minimax_turn)
-    random_player = Player("yellow", 2, "Random", random_turn)    
-
-    run_game(negamax_player, random_player, depth) 
-
-def play_negamax_vs_random(depth):
-    negamax_player = Player("red", 1, "Negamax", negamax_turn)
-    random_player = Player("yellow", 2, "Random", random_turn)    
-
-    run_game(negamax_player, random_player, depth)    
-
-def play_random_vs_random(depth):
-    random_1_player = Player("red", 1, "Random", random_turn)
-    random_2_player = Player("yellow", 2, "Random", random_turn) 
-
-    run_game(random_1_player, random_2_player, depth)  
-
-def play_player_vs_negamax(depth):
-    player = Player("red", 1, "Player", player_turn)
-    negamax_player = Player("yellow", 2, "Negamax", negamax_turn)    
-
-    run_game(player, negamax_player, depth)   
-
-
-
-        
-def play_minimax_vs_random_old(depth):
     
-    minimax_player = Player("red", 1, "Minimax", minimax_turn)
-    random_player = Player("yellow", 2, "Random", random_turn)        
-
-    turn = random.randint(1, 2)
-    turn_generator = alternate_turn()
-    game = ConnectFourTwistAndTurn(minimax_player, random_player, depth)
-
     players = game.get_players()
 
-    print(f"Player {1} - {players[1].get_name()}")
-    print(f"Player {2} - {players[2].get_name()}")
+    print(f"Player {1} - {players[1].get_name()} - Token: {players[1].get_number()} - Depth {players[1].get_depth()}")
+    print(f"Player {2} - {players[2].get_name()} - Token: {players[2].get_number()} - Depth {players[2].get_depth()}")
 
     starter = players[turn]
     game.set_starter(starter)
 
-    board = game.get_board()
+    turn_generator = alternate_turn(turn, 3 - turn)
 
+    board = game.get_board()
+    
     while not game.get_game_over():
         game.set_current_node_count(0)
         current_player = players[turn]
@@ -876,7 +948,7 @@ def play_minimax_vs_random_old(depth):
         print(f"current player: {current_player.get_name()} turn: {turn} - other player is {other_player.get_name()}")
 
         start_time = time.time()
-        game, board, turn = current_player.run_strategy(game, board, turn, depth)
+        game, board, turn = current_player.run_strategy(game, board, turn)
         end_time = time.time()
 
         current_player.add_turn_nodes(game.get_current_node_count())
@@ -893,16 +965,112 @@ def play_minimax_vs_random_old(depth):
         
         turn = next(turn_generator)
 
-def run_strategies():
+
+def play_minimax_vs_random(minimax_depth, ab_pruning, t_tables):
+    minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
+    random_player = Player("yellow", 2, "Random", random_turn, None)  
+    game = ConnectFourTwistAndTurn(minimax_player, random_player, ab_pruning, t_tables)  
+
+    run_game(game) 
+
+def play_negamax_vs_random(negamax_depth):
+    negamax_player = Player("red", 1, "Negamax", negamax_turn, negamax_depth)
+    random_player = Player("yellow", 2, "Random", random_turn, None)    
+    game = ConnectFourTwistAndTurn(negamax_player, random_player)  
+
+    run_game(game)
+
+def play_random_vs_random():
+    random_1_player = Player("red", 1, "Random 1", random_turn, None)
+    random_2_player = Player("yellow", 2, "Random 2", random_turn, None) 
+    game = ConnectFourTwistAndTurn(random_1_player, random_2_player)
+
+    run_game(game)  
+
+def play_minimax_vs_negamax(minimax_depth, negamax_depth):
+    minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
+    negamax_player = Player("yellow", 2, "Negamax", negamax_turn, negamax_depth)
+    game = ConnectFourTwistAndTurn(minimax_player, negamax_player)  
+
+    game.generate_scenario(tokens_per_player=2) # This randomises two yellow and red tokens to create different scenarios
+
+    run_game(game)  
+
+def play_minimax_vs_minimax(minimax_1_depth, minimax_2_depth):
+    minimax_player_1 = Player("red", 1, "Minimax 1", minimax_turn, minimax_1_depth)
+    minimax_player_2 = Player("yellow", 2, "Minimax 2", minimax_turn, minimax_2_depth)
+    game = ConnectFourTwistAndTurn(minimax_player_1, minimax_player_2)  
+    game.generate_scenario(tokens_per_player=2)
+    run_game(game) 
+
+def play_negamax_vs_negamax(negamax_1_depth, negamax_2_depth):
+    negamax_player_1 = Player("red", 1, "Minimax 1", negamax_turn, negamax_1_depth)
+    negamax_player_2 = Player("yellow", 2, "Minimax 2", negamax_turn, negamax_2_depth)
+    game = ConnectFourTwistAndTurn(negamax_player_1, negamax_player_2)  
+    game.generate_scenario(tokens_per_player=2)
+    run_game(game) 
+
+def play_player_vs_negamax(negamax_depth):
+    player = Player("red", 1, "Player", player_turn, None)
+    negamax_player = Player("yellow", 2, "Negamax", negamax_turn, negamax_depth)    
+    game = ConnectFourTwistAndTurn(player, negamax_player)  
+
+    run_game(game)   
+
+def play_minimax_vs_greedy(minimax_depth, ab_pruning, t_tables):
+    minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
+    greedy_player = Player("yellow", 2, "Greedy", greedy_turn, None)
+    game = ConnectFourTwistAndTurn(minimax_player, greedy_player, ab_pruning, t_tables)  
+
+    game.generate_scenario(tokens_per_player=2) # This randomises two yellow and red tokens to create different scenarios
+
+    run_game(game)  
+
+
+def generate_win_data(repeat):
+
+    for x in range(repeat):      
+
+        play_minimax_vs_random(MAX_DEPTH)
+        play_negamax_vs_random(MAX_DEPTH)
+        play_random_vs_random(MAX_DEPTH)
+        play_minimax_vs_negamax(MAX_DEPTH, MAX_DEPTH)
+        play_minimax_vs_minimax(MAX_DEPTH, MAX_DEPTH)
+        play_negamax_vs_negamax(MAX_DEPTH, MAX_DEPTH)
+
+#play_minimax_vs_minimax(minimax_1_depth=MAX_DEPTH, minimax_2_depth=MAX_DEPTH)
+
+def minimax_vs_random_testing():
     count = 0
-    max_depth = MAX_DEPTH
+    for _ in range(4):
+        for _ in range(5):
+            play_minimax_vs_random(MAX_DEPTH - count, True, True)
+            play_minimax_vs_random(MAX_DEPTH - count, True, True)
+            play_minimax_vs_random(MAX_DEPTH - count, True, True)
+        count += 1
 
-    for x in range(30):
-        if count % 5 == 0 and count != 0:
-            max_depth -= 1
-            
-        play_minimax_vs_random(max_depth)
-        play_negamax_vs_random(max_depth)
-        play_random_vs_random(max_depth)
+def tt_abp_minimax_testing():
+    for _ in range(10):
+        play_minimax_vs_random(4, True, True)
+        play_minimax_vs_random(4, False, True)
+        play_minimax_vs_random(4, True, False)
+        play_minimax_vs_random(4, False, False)
 
-run_strategies()
+def minimax_vs_greedy_testing():
+    for _ in range(10):
+        
+        play_minimax_vs_greedy(5, True, True)
+        play_minimax_vs_greedy(4, True, True)
+        play_minimax_vs_greedy(3, True, True)
+        play_minimax_vs_greedy(2, True, True)
+        
+
+#play_minimax_vs_greedy(3, True, True)
+
+#repeat()
+#minimax_vs_greedy_testing()
+
+
+#play_minimax_vs_random(MAX_DEPTH - 3)
+
+minimax_vs_random_testing()
