@@ -162,144 +162,78 @@ class ConnectFourTwistAndTurn:
                     return True
                 
                                            
-    def evaluate_window(self, window, piece, direction):
+    def evaluate_window(self, window, piece, direction, row, col):
         score = 0
         multiplier = 1
         
         opp_piece = 3 - piece
 
-        if (direction == "vertical") or (direction == "lru") or (direction == "lrd"):
-            multiplier = 1.5
+        modifiable_directions = ["vertical", "lrd", "lru"]
 
         if window.count(piece) == 4:
             score += 100
-            score = score * multiplier
+            score = score 
 
         if window.count(opp_piece) == 4:
-            score -= 100
-            score = score * multiplier
+            score -= 90
+            score = score 
 
         if window.count(piece) == 3 and window.count(EMPTY) == 1:
             score += 50
-            score = score * multiplier
+            score = score 
 
         if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
-            score -= 50
-            score = score * multiplier
+            score -= 60
+            score = score 
             
         if window.count(piece) == 2 and window.count(EMPTY) == 2:
             score += 2
-            score = score * multiplier
+            score = score 
 
         if window.count(opp_piece) == 2 and window.count(EMPTY) == 2:
             score -= 2
-            score = score * multiplier
-
+            score = score 
         # Ways you can lose in one move 
 
         # Vertically this is one move away from winning due to rotation move 
-        if window.count(piece) == 3 and window.count(opp_piece) == 1 and direction == "vertical":
-            score += 5
+        if window.count(piece) == 3 and window.count(opp_piece) == 1 and direction in modifiable_directions:
+            score += 50
 
         # Vertically this is one move away from winning due to rotation move 
-        if window.count(opp_piece) == 3 and window.count(piece) == 1 and direction == "vertical":
-            score -= 5
+        if window.count(opp_piece) == 3 and window.count(piece) == 1 and direction in modifiable_directions:
+            score -= 50
 
         return score
     
-    def score_board(self, board, piece):
-        score = 0
-        score_value = 50
-
-        opp_piece = 3 - piece
-
-        
-
-        # Checking for common win method  - which is a win in one turn 
-        # Currently only works for vertical
-        for row in range(ROWS - 2):
-            for col in range(COLUMNS):
-                token_1 = board[row][col]
-                token_2 = board[row + 1][col]
-                token_3 = board[row + 2][col]
-
-                tokens = [token_1, token_2, token_3]
-
-                # TODO if any of the tokens are 0 skip
-                
-                if tokens == [opp_piece, opp_piece, piece]:
-                    #print(tokens)
-                    #print("looking at token 3 and adjacent locations")
-                    left_token_3 = board[row + 2][(col - 1) % COLUMNS]
-                    right_token_3 = board[row + 2][(col + 1) % COLUMNS]
-
-                    # if the adjacent token to your piece is opp piece, punish
-                    if left_token_3 == opp_piece:
-                        score -= score_value
-                        #print(f"{tokens} - left token 3: {left_token_3}")
-                    elif right_token_3 == opp_piece:
-                        score -= score_value
-                        #print(f"{tokens} - right token 3: {right_token_3}")
-
-                elif tokens == [opp_piece, piece, opp_piece]:
-                    #print(tokens)
-                    #print("looking at token 2 and adjacent locations")
-                    left_token_2 = board[row + 1][(col - 1) % COLUMNS]
-                    right_token_2 = board[row + 1][(col + 1) % COLUMNS]
-
-                    # if the adjacent token to your piece is opp piece, punish
-                    if left_token_2 == opp_piece:
-                        score -= score_value
-                        #print(f"{tokens} - left token 2: {left_token_2}")
-                    elif right_token_2 == opp_piece:
-                        score -= score_value
-                        #print(f"{tokens} - right token 2: {right_token_2}")
-            
-                elif tokens == [piece, opp_piece, opp_piece]:
-                    #print(tokens)
-                    #print("looking at token 1 and adjacent locations")
-                    left_token_1 = board[row][(col - 1) % COLUMNS]
-                    right_token_1 = board[row][(col + 1) % COLUMNS]
-
-                    # if the adjacent token to your piece is opp piece, punish
-                    if left_token_1 == opp_piece:
-                        score -= score_value
-                        #print(f"{tokens} - left token 1: {left_token_1}")
-                    elif right_token_1 == opp_piece:
-                        score -= score_value
-                        #print(f"{tokens} - right token 1: {right_token_1}")
-                        
-        return score
     
     def score_position(self, board, piece):
         score = 0
 
-        for r in range(ROWS):
-            for c in range(COLUMNS):
-                window = [board[r][(c + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
+        for row in range(ROWS):
+            for col in range(COLUMNS):
+                window = [board[row][(col + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
                 #print(f"lrd window {window}")
-                score += self.evaluate_window(window, piece, "horizontal")
+                score += self.evaluate_window(window, piece, "horizontal", row, col)
 
         ## Score Vertical
-        for c in range(COLUMNS):
-            col_array = [int(i) for i in list(board[:,c])]
-            for r in range(ROWS-3):
-                window = col_array[r:r+WINDOW_LENGTH]
-                score += self.evaluate_window(window, piece, "vertical")
+        for col in range(COLUMNS):
+            col_array = [int(i) for i in list(board[:,col])]
+            for row in range(ROWS-3):
+                window = col_array[row:row+WINDOW_LENGTH]
+                score += self.evaluate_window(window, piece, "vertical", row, col)
 
         # left right up diagonal
-        for r in range(ROWS-3):
-            for c in range(COLUMNS):
-                window = [board[r+i][(c + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
-                score += self.evaluate_window(window, piece, "lru")
+        for row in range(ROWS-3):
+            for col in range(COLUMNS):
+                window = [board[row + i][(col + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
+                score += self.evaluate_window(window, piece, "lru", row, col)
 
-        for r in range(ROWS-3):
-            for c in range(COLUMNS):
-                window = [board[r-i][(c - i) % COLUMNS] for i in range(WINDOW_LENGTH)]
-                score += self.evaluate_window(window, piece, "lrd")
+        # Left right down diagonal
+        for row in range(3, ROWS):
+            for col in range(COLUMNS):
+                window = [board[row - i][(col + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
+                score += self.evaluate_window(window, piece, "lrd", row, col)
 
-        score += self.score_board(board, piece)
-                
         return score
 
     def check_leaf_node(self, board):
@@ -309,119 +243,11 @@ class ConnectFourTwistAndTurn:
 
         return  p1_winning_move or p2_winning_move or no_more_moves
 
-    def minimax_old(self, board, depth, alpha, beta, maximizingPlayer, minimax_number, opp_number):
-        valid_locations = self.get_valid_locations(board)
-        occupied_rows = self.find_occupied_rows(board)
-        is_leaf = self.check_leaf_node(board)
-
-        #print(node_count)
-
-        # Checking if board state is in the transposition table
-        key = str(board)
-        if key in self.__transposition_table:
-            entry = self.__transposition_table[key]
-            if entry['depth'] >= depth:
-                if entry['type'] == 'exact':
-                    return None, entry['score']
-                elif entry['type'] == 'lowerbound':
-                    alpha = max(alpha, entry['score'])
-                elif entry['type'] == 'upperbound':
-                    beta = min(beta, entry['score'])
-                if alpha >= beta:
-                    return None, entry['score']
-                
-        self.__current_node_count += 1
-            
-        if depth == 0 or is_leaf:
-            if is_leaf:
-                if self.winning_move(board, minimax_number):
-                    return (None, 100000000000000)
-                elif self.winning_move(board, opp_number):
-                    return (None, -10000000000000)
-                else: # Game is over, no more valid moves
-                    return (None, 0)
-            else: # Depth is zero
-                return (None, self.score_position(board, minimax_number))
-            
-        if maximizingPlayer:
-            value = -math.inf
-            column = random.choice(valid_locations)
-            direction = None
-            row = None
-
-            for drop_col in valid_locations:
-                for rotation_direction in ["left", "right", "no direction"]:
-                    for rotation_row in occupied_rows:
-                        b_copy = board.copy()
-                        drop_row = self.get_next_open_row(b_copy, drop_col)
-
-                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, minimax_number)
-                        
-                        if rotation_direction != "no direction":
-                            # Rotate the board
-                            rotated_board = self.rotate_board(rotation_row, rotation_direction, b_copy, occupied_rows)
-                        else:
-                            rotated_board = b_copy
-
-                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, False, minimax_number, opp_number)[1]
-                        if new_score > value:
-                            #print(f"maximising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
-                            value = new_score
-                            column = drop_col
-                            direction = rotation_direction
-                            row = rotation_row
-                        alpha = max(alpha, value)
-                        if alpha >= beta:
-                            break
-
-            # Adding the state to the transposition table 
-            self.__transposition_table[key] = {
-                'depth': depth,
-                'score': value,
-                'type': 'exact' if value >= beta else ('lowerbound' if value > alpha else 'upperbound')
-            }
-
-            return column, value, direction, row
-
-        else: # Minimizing player
-            value = math.inf
-            column = random.choice(valid_locations)
-            rotation_direction = None
-            rotation_row = None
-
-            for drop_col in valid_locations:
-                for rotation_direction in ["left", "right", "no direction"]:
-                    for rotation_row in occupied_rows:
-                        b_copy = board.copy()
-                        drop_row = self.get_next_open_row(b_copy, drop_col)
-
-                        b_copy = self.drop_piece(b_copy, drop_row, drop_col, opp_number)
-                        
-                        if rotation_direction != "no direction":
-                            # Rotate the board
-                            rotated_board = self.rotate_board(rotation_row, rotation_direction, b_copy, occupied_rows)
-                        else:
-                            rotated_board = b_copy
-
-                        new_score = self.minimax(rotated_board, depth-1, alpha, beta, True, minimax_number, opp_number)[1]
-                        if new_score < value:
-                            #print(f"minimising player - new score {new_score} - dc: {drop_col} rr: {rotation_row} rd: {rotation_direction}")
-                            value = new_score
-                            column = drop_col
-                            direction = rotation_direction
-                            row = rotation_row
-                        beta = min(beta, value)
-                        if alpha >= beta:
-                            break
-            return column, value, direction, row
-
-
     def minimax(self, board, depth, alpha, beta, maximizingPlayer, minimax_number, opp_number):
         valid_locations = self.get_valid_locations(board)
         occupied_rows = self.find_occupied_rows(board)
         is_leaf = self.check_leaf_node(board)
 
-        
         key = str(board)
         if self.__t_tables:  
             if key in self.__transposition_table:
@@ -441,9 +267,9 @@ class ConnectFourTwistAndTurn:
         if depth == 0 or is_leaf:
             if is_leaf:
                 if self.winning_move(board, minimax_number):
-                    return (None, 100000000000000)
+                    return (None, 10000000000000000)
                 elif self.winning_move(board, opp_number):
-                    return (None, -10000000000000)
+                    return (None, -1000000000000000)
                 else: # Game is over, no more valid moves
                     return (None, 0)
             else: # Depth is zero
@@ -548,9 +374,9 @@ class ConnectFourTwistAndTurn:
         if depth == 0 or is_leaf:
             if is_leaf:
                 if self.winning_move(board, sign):
-                    return None, 100000000000000, None, None
+                    return None, 10000000000000000, None, None
                 elif self.winning_move(board, 3 - sign):  # opponent's sign
-                    return None, -10000000000000, None, None
+                    return None, -1000000000000000, None, None
                 else:  # Game is over, no more valid moves
                     return None, 0, None, None
             else:  # Depth is zero
@@ -626,8 +452,6 @@ class ConnectFourTwistAndTurn:
 
         return best_col, best_score, best_direction, best_row
 
-        
- 
     def get_valid_locations(self, board):
         valid_locations = []
         for col in range(COLUMNS):
@@ -965,6 +789,13 @@ def run_game(game):
         
         turn = next(turn_generator)
 
+def play_minimax_vs_player(minimax_depth, ab_pruning, t_tables):
+    minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
+    human_player = Player("yellow", 2, "Human", player_turn, None)  
+    game = ConnectFourTwistAndTurn(minimax_player, human_player, ab_pruning, t_tables)  
+
+    run_game(game) 
+
 
 def play_minimax_vs_random(minimax_depth, ab_pruning, t_tables):
     minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
@@ -1058,19 +889,19 @@ def tt_abp_minimax_testing():
 
 def minimax_vs_greedy_testing():
     for _ in range(10):
-        
-        play_minimax_vs_greedy(5, True, True)
-        play_minimax_vs_greedy(4, True, True)
-        play_minimax_vs_greedy(3, True, True)
+        play_minimax_vs_greedy(1, True, True)
         play_minimax_vs_greedy(2, True, True)
+        play_minimax_vs_greedy(3, True, True)
+        play_minimax_vs_greedy(4, True, True)
+        
         
 
 #play_minimax_vs_greedy(3, True, True)
 
 #repeat()
-#minimax_vs_greedy_testing()
+minimax_vs_greedy_testing()
 
 
 #play_minimax_vs_random(MAX_DEPTH - 3)
 
-minimax_vs_random_testing()
+#minimax_vs_random_testing()
