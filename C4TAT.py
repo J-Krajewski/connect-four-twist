@@ -162,44 +162,33 @@ class ConnectFourTwistAndTurn:
                     return True
                 
                                            
-    def evaluate_window(self, window, piece, direction, row, col):
+    def evaluate_window(self, window, piece, direction):
         score = 0
-        multiplier = 1
-        
         opp_piece = 3 - piece
 
         modifiable_directions = ["vertical", "lrd", "lru"]
 
         if window.count(piece) == 4:
             score += 100
-            score = score 
-
+            
         if window.count(opp_piece) == 4:
             score -= 90
-            score = score 
-
+            
         if window.count(piece) == 3 and window.count(EMPTY) == 1:
             score += 50
-            score = score 
-
+            
         if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
             score -= 60
-            score = score 
-            
+             
         if window.count(piece) == 2 and window.count(EMPTY) == 2:
             score += 2
-            score = score 
-
+            
         if window.count(opp_piece) == 2 and window.count(EMPTY) == 2:
             score -= 2
-            score = score 
-        # Ways you can lose in one move 
 
-        # Vertically this is one move away from winning due to rotation move 
         if window.count(piece) == 3 and window.count(opp_piece) == 1 and direction in modifiable_directions:
             score += 50
 
-        # Vertically this is one move away from winning due to rotation move 
         if window.count(opp_piece) == 3 and window.count(piece) == 1 and direction in modifiable_directions:
             score -= 50
 
@@ -213,26 +202,26 @@ class ConnectFourTwistAndTurn:
             for col in range(COLUMNS):
                 window = [board[row][(col + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
                 #print(f"lrd window {window}")
-                score += self.evaluate_window(window, piece, "horizontal", row, col)
+                score += self.evaluate_window(window, piece, "horizontal")
 
         ## Score Vertical
         for col in range(COLUMNS):
             col_array = [int(i) for i in list(board[:,col])]
             for row in range(ROWS-3):
                 window = col_array[row:row+WINDOW_LENGTH]
-                score += self.evaluate_window(window, piece, "vertical", row, col)
+                score += self.evaluate_window(window, piece, "vertical")
 
         # left right up diagonal
         for row in range(ROWS-3):
             for col in range(COLUMNS):
                 window = [board[row + i][(col + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
-                score += self.evaluate_window(window, piece, "lru", row, col)
+                score += self.evaluate_window(window, piece, "lru")
 
         # Left right down diagonal
         for row in range(3, ROWS):
             for col in range(COLUMNS):
                 window = [board[row - i][(col + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
-                score += self.evaluate_window(window, piece, "lrd", row, col)
+                score += self.evaluate_window(window, piece, "lrd")
 
         return score
 
@@ -804,24 +793,24 @@ def play_minimax_vs_random(minimax_depth, ab_pruning, t_tables):
 
     run_game(game) 
 
-def play_negamax_vs_random(negamax_depth):
+def play_negamax_vs_random(negamax_depth, ab_pruning, t_tables):
     negamax_player = Player("red", 1, "Negamax", negamax_turn, negamax_depth)
     random_player = Player("yellow", 2, "Random", random_turn, None)    
-    game = ConnectFourTwistAndTurn(negamax_player, random_player)  
+    game = ConnectFourTwistAndTurn(negamax_player, random_player, ab_pruning, t_tables)  
 
     run_game(game)
 
 def play_random_vs_random():
-    random_1_player = Player("red", 1, "Random 1", random_turn, None)
-    random_2_player = Player("yellow", 2, "Random 2", random_turn, None) 
-    game = ConnectFourTwistAndTurn(random_1_player, random_2_player)
+    random_1_player = Player("red", 1, "Random1", random_turn, None)
+    random_2_player = Player("yellow", 2, "Random2", random_turn, None) 
+    game = ConnectFourTwistAndTurn(random_1_player, random_2_player, True, True)
 
     run_game(game)  
 
-def play_minimax_vs_negamax(minimax_depth, negamax_depth):
+def play_minimax_vs_negamax(minimax_depth, negamax_depth, ab_pruning, t_tables):
     minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
     negamax_player = Player("yellow", 2, "Negamax", negamax_turn, negamax_depth)
-    game = ConnectFourTwistAndTurn(minimax_player, negamax_player)  
+    game = ConnectFourTwistAndTurn(minimax_player, negamax_player, ab_pruning, t_tables)  
 
     game.generate_scenario(tokens_per_player=2) # This randomises two yellow and red tokens to create different scenarios
 
@@ -857,28 +846,36 @@ def play_minimax_vs_greedy(minimax_depth, ab_pruning, t_tables):
 
     run_game(game)  
 
+def play_negamax_vs_greedy(negamax_depth, ab_pruning, t_tables):
+    negamax_player = Player("red", 1, "Negamax", negamax_turn, negamax_depth)
+    greedy_player = Player("yellow", 2, "Greedy", greedy_turn, None)
+    game = ConnectFourTwistAndTurn(negamax_player, greedy_player, ab_pruning, t_tables)  
 
-def generate_win_data(repeat):
+    game.generate_scenario(tokens_per_player=2) # This randomises two yellow and red tokens to create different scenarios
 
-    for x in range(repeat):      
+    run_game(game)  
 
-        play_minimax_vs_random(MAX_DEPTH)
-        play_negamax_vs_random(MAX_DEPTH)
-        play_random_vs_random(MAX_DEPTH)
-        play_minimax_vs_negamax(MAX_DEPTH, MAX_DEPTH)
-        play_minimax_vs_minimax(MAX_DEPTH, MAX_DEPTH)
-        play_negamax_vs_negamax(MAX_DEPTH, MAX_DEPTH)
+
+
 
 #play_minimax_vs_minimax(minimax_1_depth=MAX_DEPTH, minimax_2_depth=MAX_DEPTH)
 
-def minimax_vs_random_testing():
-    count = 0
-    for _ in range(4):
-        for _ in range(5):
-            play_minimax_vs_random(MAX_DEPTH - count, True, True)
-            play_minimax_vs_random(MAX_DEPTH - count, True, True)
-            play_minimax_vs_random(MAX_DEPTH - count, True, True)
-        count += 1
+def minimax_and_negamax_vs_random_testing():
+    for _ in range(200):
+        play_minimax_vs_random(1, True, True)
+        play_minimax_vs_random(2, True, True)
+        play_minimax_vs_random(3, True, True)
+        play_minimax_vs_random(4, True, True)
+        play_minimax_vs_random(5, True, True)
+        
+        
+        play_negamax_vs_random(1, True, True)
+        play_negamax_vs_random(2, True, True)
+        play_negamax_vs_random(3, True, True)
+        play_negamax_vs_random(4, True, True)
+        play_negamax_vs_random(5, True, True)
+        
+        
 
 def tt_abp_minimax_testing():
     for _ in range(10):
@@ -888,20 +885,44 @@ def tt_abp_minimax_testing():
         play_minimax_vs_random(4, False, False)
 
 def minimax_vs_greedy_testing():
-    for _ in range(10):
+    for _ in range(100):
         play_minimax_vs_greedy(1, True, True)
         play_minimax_vs_greedy(2, True, True)
         play_minimax_vs_greedy(3, True, True)
         play_minimax_vs_greedy(4, True, True)
+
+def negamax_vs_greedy_testing():
+    for _ in range(100):
+        play_negamax_vs_greedy(1, True, True)
+        play_negamax_vs_greedy(2, True, True)
+        play_negamax_vs_greedy(3, True, True)
+        play_negamax_vs_greedy(4, True, True)
+        play_negamax_vs_greedy(5, True, True)
+        play_negamax_vs_greedy(6, True, True)
+
+def minimax_vs_negamax_test():
+    for _ in range(200):
+        play_minimax_vs_negamax(1,1, True, True)
+        play_minimax_vs_negamax(2,2, True, True)
+        play_minimax_vs_negamax(3,3, True, True)
+        play_minimax_vs_negamax(4,4, True, True)
+        play_minimax_vs_negamax(5,5, True, True)
         
-        
+def random_vs_random_test():
+    for _ in range(1000):
+        play_random_vs_random()
 
 #play_minimax_vs_greedy(3, True, True)
 
 #repeat()
-minimax_vs_greedy_testing()
+#minimax_vs_greedy_testing()
 
+
+#minimax_vs_random_testing()
+
+#minimax_vs_negamax_test()
 
 #play_minimax_vs_random(MAX_DEPTH - 3)
 
 #minimax_vs_random_testing()
+random_vs_random_test()

@@ -30,7 +30,7 @@ class Player():
 
     def add_player_info(self, row):
         # Dont add this information if the player is human or random 
-        non_metric_players = ["Random", "Player", "Greedy"]
+        non_metric_players = ["Random", "Player", "Greedy", "Random1", "Random2"]
 
         if self.__name in non_metric_players:
             return row
