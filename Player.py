@@ -16,12 +16,10 @@ class Player():
         self.__opp_number = self.find_opp_number()
 
     def find_opp_number(self):
-
         if self.__number == 1:
             return 2
         elif self.__number == 2:
             return 1
-
         
     def run_strategy(self, game, board, turn):
         output = self.__strategy(game, board, turn, self.__depth, self.__number, self.__opp_number)
@@ -68,11 +66,6 @@ class Player():
         return average_value
     
     def add_turn_time(self, time):
-        #time = decimal.Decimal(time)  
-        
-        # rounding off  
-        #time = time.quantize(decimal.Decimal('0.00'))  
-
         time = round(time, 4)
         self.__turn_times.append(time)
 

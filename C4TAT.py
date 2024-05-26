@@ -1,12 +1,9 @@
 import numpy as np
 import random
-from colorama import Fore, Style
+from colorama import Style
 import csv
 import time
-import itertools
-import sys
 import math
-import decimal  
 
 from Player import Player 
 
@@ -37,12 +34,8 @@ class ConnectFourTwistAndTurn:
         self.__starter = None
         self.__win_direction = None
 
-        
-        
-        
     def create_board(self):
         board = np.zeros((ROWS,COLUMNS), dtype=int)
-        
         return board
 
     def drop_piece(self, board, row, col, piece):
@@ -50,10 +43,7 @@ class ConnectFourTwistAndTurn:
         return board 
 
     def is_valid_location(self, board, col):
-        #print(board[ROWS-1][col])
         drop_col = (board[ROWS-1][col] == 0)
-        #print(f"col {col} - {drop_col} - {board[ROWS-1][col]}")
-
         return drop_col
 
     def get_next_open_row(self, board, col):
@@ -68,13 +58,10 @@ class ConnectFourTwistAndTurn:
             empty_row = [0 for _ in range(0, COLUMNS)]
             if any(board[row][col] != empty_row[col] for col in range(COLUMNS)):
                 occupied_rows.append(row)
-
-        #print(f"Occupied Rows {occupied_rows}")    
+ 
         return occupied_rows
     
-   
     def apply_gravity(self, board):
-        
         for col in range(COLUMNS):
             for row in range(ROWS):
                 if board[row][col] == 0:
@@ -82,27 +69,21 @@ class ConnectFourTwistAndTurn:
                         if board[r][col] != 0:
                             board[row][col], board[r][col] = board[r][col], board[row][col]
                             break
-
-            
+      
     def rotate_board(self, row, direction, board, occupied_rows):
-
         if direction == "right":
             board[row] = np.roll(board[row],+1)
             self.apply_gravity(board)
-            
             return board
         elif direction == "left":
             board[row] = np.roll(board[row],-1)
             self.apply_gravity(board)
-
             return board
- 
         elif direction == "no direction":
             return board
         else:
             print(f"{direction} is not a direction option, rotation not applied")
             return board
-
 
     def print_board(self, board):
         rev_board = board[::-1] # Reverse just for printing 
@@ -116,7 +97,6 @@ class ConnectFourTwistAndTurn:
                     row_output += str(f"{self.__player1.get_text_colour()}{self.__player1.get_number()}")
                 if token == 2:
                     row_output += str(f"{self.__player2.get_text_colour()}{self.__player2.get_number()}")
-
             print(row_output)
         print(f"{Style.RESET_ALL}======")
 
@@ -197,14 +177,14 @@ class ConnectFourTwistAndTurn:
     
     def score_position(self, board, piece):
         score = 0
-
+        # Score Horizontally
         for row in range(ROWS):
             for col in range(COLUMNS):
                 window = [board[row][(col + i) % COLUMNS] for i in range(WINDOW_LENGTH)]
                 #print(f"lrd window {window}")
                 score += self.evaluate_window(window, piece, "horizontal")
 
-        ## Score Vertical
+        # Score Vertical
         for col in range(COLUMNS):
             col_array = [int(i) for i in list(board[:,col])]
             for row in range(ROWS-3):
@@ -458,7 +438,7 @@ class ConnectFourTwistAndTurn:
 
     def check_for_win(self, board):
 
-        # Check both players for a potential win or draw
+        # Check both players for a potential win 
         self.check_winning_move(self.__player1, board)
         self.check_winning_move(self.__player2, board)
 
@@ -466,8 +446,6 @@ class ConnectFourTwistAndTurn:
             print("GAME OVER")
             print(f"Winner is {self.get_winner()}")
             self.write_to_csv()
-            
-
             return True
         
         return False
@@ -475,12 +453,10 @@ class ConnectFourTwistAndTurn:
     def write_to_csv(self):
         p1_name = self.__player1.get_name().lower()
         p2_name = self.__player2.get_name().lower()
-
         filename = f"Results/{p1_name}_vs_{p2_name}.csv"
 
         with open(filename, mode='a') as file:
             writer = csv.writer(file)
-        
             row = [self.__winner, self.__starter.get_name(), self.__total_turns, 
                    self.__win_direction, self.__ab_pruning, self.__t_tables]
             row = self.__player1.add_player_info(row)
@@ -489,7 +465,6 @@ class ConnectFourTwistAndTurn:
             writer.writerow(row)
 
     def generate_scenario(self, tokens_per_player):
-
         for j in range(tokens_per_player):
             # Determine who places first randomly
             first_player = random.randint(1, 2)
@@ -499,11 +474,8 @@ class ConnectFourTwistAndTurn:
             self, self.__board, turn = random_turn(self, self.__board, None, None, random_number=first_player, opp_number=second_player, display=False)
             self, self.__board, turn = random_turn(self, self.__board, None, None, random_number=second_player, opp_number=first_player, display=False)
 
-
         print(f">>> GENERATED SCENARIO")
         self.print_board(self.__board)
-    
-
     
     def get_game_over(self):
         return self.__game_over
@@ -556,7 +528,6 @@ class ConnectFourTwistAndTurn:
         self.__player2 = player2
     
 def turn_drop_token(col, game, turn, player, board):
-
     row = game.get_next_open_row(board, col)
     board = game.drop_piece(board, row, col, player)
 
@@ -575,7 +546,6 @@ def turn_rotate_board(row, direction, game, board):
     return game
 
 def player_turn(game, board, turn, depth, player_number, opp_number, display=True):
-
     # Get the Drop Column
     valid_locations = game.get_valid_locations(board)
     drop_col = int(input("Enter Drop Column"))
@@ -612,7 +582,6 @@ def player_turn(game, board, turn, depth, player_number, opp_number, display=Tru
     return game, board, turn
 
 def random_turn(game, board, turn, depth, random_number, opp_number, display=True):
-        
         valid_locations = game.get_valid_locations(board)
         random_column = random.choice(valid_locations)
 
@@ -653,7 +622,6 @@ def random_turn(game, board, turn, depth, random_number, opp_number, display=Tru
         return game, board, turn
 
 def minimax_turn(game, board, turn, depth, minimax_number, opp_number, display=True):
-    
     column, value, rotation_direction, rotation_row = game.minimax(board, depth, -math.inf, math.inf, True, minimax_number, opp_number)
     
     if (column != None):
@@ -679,7 +647,6 @@ def minimax_turn(game, board, turn, depth, minimax_number, opp_number, display=T
             return game, board, turn
         
 def greedy_turn(game, board, turn, depth, greedy_number, opp_number, display=True):
-    
     column, value, rotation_direction, rotation_row = game.greedy_search(board, greedy_number, opp_number)
     
     if (column != None):
@@ -699,9 +666,7 @@ def greedy_turn(game, board, turn, depth, greedy_number, opp_number, display=Tru
         
             return game, board, turn
 
-#def negamax_turn(game, board, turn, piece, depth):
 def negamax_turn(game, board, turn, depth, negamax_number, opp_number, display=True):
-
     column, value, rotation_direction, rotation_row = game.negamax(board, depth, -math.inf, math.inf, negamax_number)
 
     #best_column, value, best_direction, best_row, node_count
@@ -730,17 +695,13 @@ def negamax_turn(game, board, turn, depth, negamax_number, opp_number, display=T
         
             return game, board, turn
 
-
 def alternate_turn(start_turn, next_turn):
     while True:
         yield next_turn
         yield start_turn
 
-
 def run_game(game):
-
     turn = random.randint(1, 2)
-    
     players = game.get_players()
 
     print(f"Player {1} - {players[1].get_name()} - Token: {players[1].get_number()} - Depth {players[1].get_depth()}")
@@ -748,9 +709,7 @@ def run_game(game):
 
     starter = players[turn]
     game.set_starter(starter)
-
     turn_generator = alternate_turn(turn, 3 - turn)
-
     board = game.get_board()
     
     while not game.get_game_over():
@@ -782,38 +741,31 @@ def play_minimax_vs_player(minimax_depth, ab_pruning, t_tables):
     minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
     human_player = Player("yellow", 2, "Human", player_turn, None)  
     game = ConnectFourTwistAndTurn(minimax_player, human_player, ab_pruning, t_tables)  
-
     run_game(game) 
-
 
 def play_minimax_vs_random(minimax_depth, ab_pruning, t_tables):
     minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
     random_player = Player("yellow", 2, "Random", random_turn, None)  
     game = ConnectFourTwistAndTurn(minimax_player, random_player, ab_pruning, t_tables)  
-
     run_game(game) 
 
 def play_negamax_vs_random(negamax_depth, ab_pruning, t_tables):
     negamax_player = Player("red", 1, "Negamax", negamax_turn, negamax_depth)
     random_player = Player("yellow", 2, "Random", random_turn, None)    
     game = ConnectFourTwistAndTurn(negamax_player, random_player, ab_pruning, t_tables)  
-
     run_game(game)
 
 def play_random_vs_random():
     random_1_player = Player("red", 1, "Random1", random_turn, None)
     random_2_player = Player("yellow", 2, "Random2", random_turn, None) 
     game = ConnectFourTwistAndTurn(random_1_player, random_2_player, True, True)
-
     run_game(game)  
 
 def play_minimax_vs_negamax(minimax_depth, negamax_depth, ab_pruning, t_tables):
     minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
     negamax_player = Player("yellow", 2, "Negamax", negamax_turn, negamax_depth)
     game = ConnectFourTwistAndTurn(minimax_player, negamax_player, ab_pruning, t_tables)  
-
     game.generate_scenario(tokens_per_player=2) # This randomises two yellow and red tokens to create different scenarios
-
     run_game(game)  
 
 def play_minimax_vs_minimax(minimax_1_depth, minimax_2_depth):
@@ -834,14 +786,12 @@ def play_player_vs_negamax(negamax_depth):
     player = Player("red", 1, "Player", player_turn, None)
     negamax_player = Player("yellow", 2, "Negamax", negamax_turn, negamax_depth)    
     game = ConnectFourTwistAndTurn(player, negamax_player)  
-
     run_game(game)   
 
 def play_minimax_vs_greedy(minimax_depth, ab_pruning, t_tables):
     minimax_player = Player("red", 1, "Minimax", minimax_turn, minimax_depth)
     greedy_player = Player("yellow", 2, "Greedy", greedy_turn, None)
     game = ConnectFourTwistAndTurn(minimax_player, greedy_player, ab_pruning, t_tables)  
-
     game.generate_scenario(tokens_per_player=2) # This randomises two yellow and red tokens to create different scenarios
 
     run_game(game)  
@@ -852,13 +802,7 @@ def play_negamax_vs_greedy(negamax_depth, ab_pruning, t_tables):
     game = ConnectFourTwistAndTurn(negamax_player, greedy_player, ab_pruning, t_tables)  
 
     game.generate_scenario(tokens_per_player=2) # This randomises two yellow and red tokens to create different scenarios
-
     run_game(game)  
-
-
-
-
-#play_minimax_vs_minimax(minimax_1_depth=MAX_DEPTH, minimax_2_depth=MAX_DEPTH)
 
 def minimax_and_negamax_vs_random_testing():
     for _ in range(200):
@@ -868,15 +812,12 @@ def minimax_and_negamax_vs_random_testing():
         play_minimax_vs_random(4, True, True)
         play_minimax_vs_random(5, True, True)
         
-        
         play_negamax_vs_random(1, True, True)
         play_negamax_vs_random(2, True, True)
         play_negamax_vs_random(3, True, True)
         play_negamax_vs_random(4, True, True)
         play_negamax_vs_random(5, True, True)
         
-        
-
 def tt_abp_minimax_testing():
     for _ in range(10):
         play_minimax_vs_random(4, True, True)
@@ -925,4 +866,11 @@ def random_vs_random_test():
 #play_minimax_vs_random(MAX_DEPTH - 3)
 
 #minimax_vs_random_testing()
-random_vs_random_test()
+#random_vs_random_test()
+#play_minimax_vs_player(3, True, True)
+
+#play_minimax_vs_negamax(3,3, True, True)
+play_minimax_vs_negamax(4,2, True, True)
+
+#play_minimax_vs_greedy(2, True, True)
+#play_negamax_vs_greedy(3, True, True)
